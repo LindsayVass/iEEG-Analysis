@@ -117,6 +117,11 @@ if firstPulseSec >= bufferSec % don't trim unless the pre-pulse EEG length excee
     EEG.data(:,1:maxTrim) = [];
     EEG.times(1:maxTrim) = [];
     EEG.pnts = size(data,2);
+    
+    % Update time of the first pulse after trimming
+    firstPulseBin = firstPulseBin - maxTrim - 1;
+    firstPulseSec = bufferSec;
+
 end
 
 eeglab redraw;
@@ -126,10 +131,6 @@ pop_eegplot(EEG,1,1,1);
 save([save_stem '_badChansRemoved_trimmed.mat'],'EEG');
 
 %% Find all remaining pulses
-
-% Update time of the first pulse
-firstPulseBin = firstPulseBin - maxTrim - 1;
-firstPulseSec = bufferSec;
 
 % Plot time around the first pulse
 plotBufferBin = 250;
