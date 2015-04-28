@@ -5,23 +5,20 @@
 %% Set up script
 clc;clear;close all;
 
-% Path to the file
-dataPath = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Behavioral Data/TeleporterA/s3_FindStore_TeleporterA_FIXED.txt';
-
-% Path to the pulse timing files
-pulsesEDF1 = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Raw Data/UCDMC15_teleporterA_EDF1_pulse_timing.mat';
-pulsesEDF2 = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Raw Data/UCDMC15_teleporterA_EDF2_pulse_timing.mat';
-
-% Path to the pre-processed EEG data
-EEG_EDF1 = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Raw Data/UCDMC15_teleporterA_EDF1_badChansRemoved_trimmed.mat';
-EEG_EDF2 = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Raw Data/UCDMC15_teleporterA_EDF2_badChansRemoved_trimmed.mat';
+% Paths
+subjectDir    = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/';
+unityDataPath = [subjectDir 'Behavioral Data/TeleporterA/s3_FindStore_TeleporterA_FIXED.txt'];
+pulsesEDF1    = [subjectDir 'Raw Data/UCDMC15_TeleporterA_EDF1_pulse_timing.mat'];
+pulsesEDF2    = [subjectDir 'Raw Data/UCDMC15_TeleporterA_EDF2_pulse_timing.mat'];
+EEG_EDF1      = [subjectDir 'Raw Data/UCDMC15_TeleporterA_EDF1_badChansRemoved_trimmed.mat'];
+EEG_EDF2      = [subjectDir 'Raw Data/UCDMC15_TeleporterA_EDF2_badChansRemoved_trimmed.mat'];
 
 % save files
-unepochedEEG1_savefile = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Raw Data/UCDMC15_teleporterA_EDF1_unepoched.set';
-unepochedEEG2_savefile = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Raw Data/UCDMC15_teleporterA_EDF2_unepoched.set';
-epochedEEG_savefile = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Raw Data/UCDMC15_teleporterA_epoched_notclean.set';
-cleanEpochedEEG_savefile = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Raw Data/UCDMC15_teleporterA_epoched.set';
-epochs_saveFile = '/Users/lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Mat Files/UCDMC15_epochs_teleporterA_Entry.mat';
+unepochedEEG1_savefile   = [subjectDir 'Raw Data/UCDMC15_TeleporterA_EDF1_unepoched.set'];
+unepochedEEG2_savefile   = [subjectDir 'Raw Data/UCDMC15_TeleporterA_EDF2_unepoched.set'];
+epochedEEG_savefile      = [subjectDir 'Raw Data/UCDMC15_TeleporterA_epoched_notclean.set'];
+cleanEpochedEEG_savefile = [subjectDir 'Epoched Data/UCDMC15_TeleporterA_epoched.set'];
+epochs_saveFile          = [subjectDir 'Mat Files/UCDMC15_TeleporterA_Epochs_Entry.mat'];
 
 % Epoch start/end times in seconds
 eStart = -3;
@@ -31,10 +28,8 @@ eEnd = 6;
 % before re-referencing
 badChans = {'RAD1' 'RAD2' 'RAD3' 'LAD1' 'LAD2'};
 
-
-
  %% Load data
- fid  = fopen(dataPath);
+ fid  = fopen(unityDataPath);
  data = textscan(fid,'%d%f%f%s%s%s%s%f%f%f','delimiter',',','Headerlines',1,'EndOfLine','\r\n'); % use this version for unity output that we fixed in Matlab
 %  data =  textscan(fid,'%d%f%f%s%s%s%s%f%f%f','delimiter',',','Headerlines',1); % use this version for raw unity output
 
@@ -455,9 +450,20 @@ eeglab;
 EEG = pop_loadset(epochedEEG_savefile);
 eeglab redraw;
 pop_eegplot(EEG,1,1,1);
+totalEpochs = size(EEG.data, 3);
 
 fprintf(' \n\n Remove bad epochs in EEGlab.\n\n Click on bad epochs to highlight them for rejection.\n To unselect an epoch, click it again.\n When done, press REJECT in bottom right.\n')
 
 keyboard;
+
+% make sure that the saved data set has fewer epochs than we started with
+% and warn us if not
+if size(EEG.data, 3) == totalEpochs
+    
+    answer = questdlg('WARNING! Data size has the same number of epochs we started with. If you rejected any epochs, this means the data did not save correctly. Stop now?','WARNING');
+    if strcmpi(answer, 'Yes') == 1
+        return
+    end
+end
 
 EEG = pop_saveset(EEG, 'filename', cleanEpochedEEG_savefile);

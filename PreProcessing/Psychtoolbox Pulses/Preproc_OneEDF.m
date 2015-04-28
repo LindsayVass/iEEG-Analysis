@@ -7,14 +7,11 @@ clear all; close all; clc;
 subject_dir = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/';
 subject_id  = 'UCDMC14';
 edf_file    = 'UCDMC14_020715.edf'; % in 'Raw Data' folder
-save_stem   = 'UCDMC14_TeleporterB_';
+save_stem   = 'UCDMC14_TeleporterB';
 
 addpath(genpath(subject_dir))
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/iEEG/Amber Scripts/'))
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/eeglab13_3_2b/'))
-
-%% UDIs
-epoch_savefile = ['epoch_teleporterB_' subject_id];
 
 %% Choose behavioral data file
 load '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/Raw Data/UCDMC14_020715_pre_eyemoves/SubjectUCDMC14_eyemoves_Data_interim.mat';
@@ -73,10 +70,11 @@ for e = 1:size(data,1)
 end
 
 EEG.nbchan = size(EEG.data,1);
-eeglab redraw % updates changes in the EEG structure in the GUI
-
+eeglab redraw;
 pop_eegplot(EEG,1,1,1);
-save('shortcut','EEG');
+
+% Save current state of EEG
+save([save_stem '_raw.mat'],'EEG');
 
 %% Find marker channel and remove bad channels
 

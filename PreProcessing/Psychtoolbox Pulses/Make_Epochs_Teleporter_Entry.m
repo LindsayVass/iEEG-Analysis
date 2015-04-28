@@ -9,13 +9,13 @@ clc;clear;close all;
 subjectDir    = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/';
 unityDataPath = [subjectDir 'Behavioral Data/TeleporterB/s2_patientTeleporterData 2.txt'];
 timeSyncPath  = [subjectDir 'Mat Files/UCDMC14_TeleporterB_time_sync.mat'];
-EEGPath       = [subjectDir 'Raw Data/UCDMC14_TeleporterB__badChansRemoved_trimmed.mat'];
+EEGPath       = [subjectDir 'Raw Data/UCDMC14_TeleporterB_badChansRemoved_trimmed.mat'];
 
 % save files
-unepochedEEG_savefile    = [subjectDir 'Raw Data/UCDMC14_teleporterB_unepoched.set'];
-epochedEEG_savefile      = [subjectDir 'Raw Data/UCDMC14_teleporterB_epoched_notclean.set'];
-cleanEpochedEEG_savefile = [subjectDir 'Raw Data/UCDMC14_teleporterB_epoched.set'];
-epochs_saveFile          = [subjectDir 'Mat Files/UCDMC14_epochs_teleporterB_Entry.mat'];
+unepochedEEG_savefile    = [subjectDir 'Raw Data/UCDMC14_TeleporterB_unepoched.set'];
+epochedEEG_savefile      = [subjectDir 'Raw Data/UCDMC14_TeleporterB_epoched_notclean.set'];
+cleanEpochedEEG_savefile = [subjectDir 'Epoched Data/UCDMC14_TeleporterB_epoched.set'];
+epochs_saveFile          = [subjectDir 'Mat Files/UCDMC14_epochs_TeleporterB_Entry.mat'];
 
 % Epoch start/end times in seconds
 eStart = -3;
@@ -307,9 +307,20 @@ EEG = pop_saveset(EEG, 'filename', epochedEEG_savefile);
 %% Remove bad epochs
 eeglab redraw;
 pop_eegplot(EEG,1,1,1);
+totalEpochs = size(EEG.data, 3);
 
 fprintf(' \n\n Remove bad epochs in EEGlab.\n\n Click on bad epochs to highlight them for rejection.\n To unselect an epoch, click it again.\n When done, press REJECT in bottom right.\n')
 
 keyboard;
+
+% make sure that the saved data set has fewer epochs than we started with
+% and warn us if not
+if size(EEG.data, 3) == totalEpochs
+    
+    answer = questdlg('WARNING! Data size has the same number of epochs we started with. If you rejected any epochs, this means the data did not save correctly. Stop now?','WARNING');
+    if strcmpi(answer, 'Yes') == 1
+        return
+    end
+end
 
 EEG = pop_saveset(EEG, 'filename', cleanEpochedEEG_savefile);

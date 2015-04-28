@@ -9,7 +9,11 @@
 clc;clear;close all;
 
 % Path to the file
-dataPath = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Behavioral Data/TeleporterA/s3_FindStore_TeleporterA.txt';
+subject_dir = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/';
+dataPath = [subject_dir 'Behavioral Data/TeleporterA/s3_FindStore_TeleporterA.txt'];
+
+% file to save
+saveFile = [subject_dir 'Behavioral Data/TeleporterA/s3_FindStore_TeleporterA_FIXED.txt'];
 
 % List of targets along with their associated arm/space types
 targetList = {'Coffee Shop' 'Florist' 'Grocery Store' 'Pet Store' 'Arm1 Teleporter' 'Arm2 Teleporter' 'Arm3 Teleporter' 'Arm4 Teleporter'};
@@ -33,7 +37,6 @@ spaceTypeList = {'Far' 'Near' 'Near' 'Far' 'Far' 'Near' 'Near' 'Far'};
  yRot        = data{10};
  
  % open file to save
- saveFile = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Behavioral Data/TeleporterA/s3_FindStore_TeleporterA_FIXED.txt';
  fid = fopen(saveFile,'w');
  fprintf(fid,'%s\n','TrialNumber,TimeElapsed,SystemTime,Target,ArmType,TeleporterSpaceType,TeleporterTimeType,XPosition,ZPosition,YRotation');
 

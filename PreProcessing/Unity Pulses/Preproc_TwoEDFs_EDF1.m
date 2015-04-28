@@ -12,8 +12,8 @@ clear all;close all;clc;
 subject_dir = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/';
 subject_id  = 'UCDMC15';
 edf_file    = 'UCDMC15_04_01_15_teleporter.edf'; % in 'Raw Data' folder
-save_stem   = 'UCDMC15_teleporterA_EDF1';
-pulsesFile  = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Raw Data/pulses_teleporterA.mat';
+save_stem   = 'UCDMC15_TeleporterA_EDF1';
+pulsesFile  = [subject_dir 'Raw Data/UCDMC15_TeleporterA_pulses.mat'];
 
 addpath(genpath(subject_dir))
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/iEEG/Amber Scripts/'))

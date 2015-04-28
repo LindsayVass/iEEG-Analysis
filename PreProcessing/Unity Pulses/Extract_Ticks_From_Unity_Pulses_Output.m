@@ -5,12 +5,13 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % set file path
-fileName = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Behavioral Data/TeleporterA/s3_PULSES_.txt';
-saveFile = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/Raw Data/pulses_teleporterA.mat';
+subject_dir   = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/';
+unityFileName = [subject_dir 'Behavioral Data/TeleporterA/s3_PULSES_.txt'];
+saveFile      = [subject_dir 'Raw Data/UCDMC15_TeleporterA_pulses.mat'];
 
 %% Parse the file
 
-fid = fopen(fileName);
+fid = fopen(unityFileName);
 pulses = [];
 
 % Read in the pulses file line by line
