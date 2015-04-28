@@ -178,7 +178,7 @@ for thisChan = 1:length(chans)
                     if numTries == 1 % if the default clim is good, then use that
                         user_clim = default_clim;
                     else
-                        user_clim = newC{1}; % otherwise save the new user-defined color limit
+                        user_clim = str2num(newC{1}); % otherwise save the new user-defined color limit
                     end % if numTries == 1
                     
                     break
