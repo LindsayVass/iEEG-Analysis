@@ -13,11 +13,11 @@ eeglab;
 
 % paths
 subject_dir      = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/';
-unepochedEEG     = [subject_dir 'Raw Data/UCDMC14_teleporterB_unepoched.set'];
-unityFile        = [subject_dir 'Behavioral Data/TeleporterB/s2_patientTeleporterData 2.txt'];
-saveFile         = [subject_dir 'Mat Files/UCDMC14_TeleporterB_FreeExplore_baseline.mat']; % mat file with mean power at each electrode/frequency
-epochEEGSaveFile = [subject_dir 'Epoched Data/UCDMC14_TeleporterB_FreeExplore_baseline_epoched.mat']; % EEG file of the epoched free exploration data
-timeSyncFile     = [subject_dir 'Mat Files/UCDMC14_TeleporterB_time_sync.mat'];
+unepochedEEG     = [subject_dir 'Raw Data/UCDMC14_TeleporterA_unepoched.set'];
+unityFile        = [subject_dir 'Behavioral Data/TeleporterA/s2_freeexplore_patientTeleporterData.txt'];
+saveFile         = [subject_dir 'Mat Files/UCDMC14_TeleporterA_FreeExplore_baseline.mat']; % mat file with mean power at each electrode/frequency
+epochEEGSaveFile = [subject_dir 'Epoched Data/UCDMC14_TeleporterA_FreeExplore_baseline_epoched.mat']; % EEG file of the epoched free exploration data
+timeSyncFile     = [subject_dir 'Mat Files/UCDMC14_TeleporterA_time_sync.mat'];
 
 % length of epochs to subdivide data into
 epochSec = 10; % in seconds
@@ -36,10 +36,9 @@ wavelet_cycles = 6;
 % parse the unity file to get the start and end times of free exploration
 % in ticks
 fid  = fopen(unityFile);
-%  data = textscan(fid,'%d%f%f%s%s%s%s%f%f%f','delimiter',',','Headerlines',1,'EndOfLine','\r\n'); % use this version for unity output that we fixed in Matlab
-data =  textscan(fid,'%d%f%f%s%s%s%s%f%f%f','delimiter',',','Headerlines',1); % use this version for raw unity output
+data =  textscan(fid,'%f%f%f%f%f','delimiter',',','Headerlines',1); 
 fclose(fid);
-systemTime = data{3};
+systemTime = data{2};
 
 % system time in ticks
 startTicks = systemTime(1);
@@ -86,9 +85,6 @@ fprintf(' \n\n Remove bad epochs in EEGlab.\n\n Click on bad epochs to highlight
 
 keyboard;
 
-% Save the epoched data
-EEG = pop_saveset(EEG, 'filename', epochEEGSaveFile);
-
 % make sure that the saved data set has fewer epochs than we started with
 % and warn us if not
 if size(EEG.data, 3) == totalEpochs
@@ -98,6 +94,11 @@ if size(EEG.data, 3) == totalEpochs
         return
     end
 end
+
+% Save the epoched data
+EEG = pop_saveset(EEG, 'filename', epochEEGSaveFile);
+
+
 
 
 %% Calculate mean power in each frequency for each electrode
