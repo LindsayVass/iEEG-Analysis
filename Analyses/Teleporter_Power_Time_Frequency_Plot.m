@@ -87,7 +87,7 @@ plotind  = find(EEG.times >= plottime(1) & EEG.times <= plottime(2));
 
 
 %% Generate time-frequency plots for each electrode
-default_clim = [-5 5];
+default_clim = [-2 2];
 
 for thisChan = 1:length(chans)
     
@@ -205,6 +205,7 @@ for thisChan = 1:length(chans)
         
         % save the plot
         saveas(2,[saveStem trialTypeList{thisType} '_' chanList{thisChan}],'png');
+        close(h);
         
     end % thisType
     
@@ -237,6 +238,7 @@ for thisChan = 1:length(chans)
     tightfig;
     
     saveas(h,[saveStem chanList{thisChan}],'png');
+    close(h);
     
 end % thisChan
 
