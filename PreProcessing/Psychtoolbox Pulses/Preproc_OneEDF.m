@@ -6,18 +6,18 @@ clear all; close all; clc;
 %% Set up paths
 subject_dir = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/';
 subject_id  = 'UCDMC14';
-edf_file    = 'UCDMC14_020715.edf'; % in 'Raw Data' folder
-save_stem   = 'UCDMC14_TeleporterB';
+edf_file    = 'UCDMC14_020415_teleporter.edf'; % in 'Raw Data' folder
+save_stem   = 'UCDMC14_TeleporterA';
 
 addpath(genpath(subject_dir))
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/iEEG/Amber Scripts/'))
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/eeglab13_3_2b/'))
 
 %% Choose behavioral data file
-load '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/Raw Data/UCDMC14_020715_pre_eyemoves/SubjectUCDMC14_eyemoves_Data_interim.mat';
+load '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/Raw Data/UCDMC14_020415_pre/SubjectUCDMC14_Data.mat';
 pretest_master_event_list = master_event_list;
 
-load '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/Raw Data/UCDMC14_020715_post/SubjectUCDMC14_2715_post_Data_interim.mat/';
+load '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/Raw Data/UCDMC14_020415_post/SubjectUCDMC14_part2_Data_interim.mat/';
 posttest_master_event_list = master_event_list;
 
 %% Load patient LFP data in .edf format
@@ -97,11 +97,6 @@ pop_eegplot(EEG,1,1,1);
 save([save_stem '_badChansRemoved.mat'],'EEG');
 
 
-%% FIND THE TIME OF THE FIRST PULSE FOR BOTH PRE-TEST AND POST-TEST
-keyboard;
-
-% PRE-TEST: 135
-% POST-TEST: 2373
 
 %% Estimate time of first pulse and trim data before it
 
@@ -142,6 +137,7 @@ save([save_stem '_badChansRemoved_trimmed.mat'],'EEG');
 
 
 %% Find and characterize polarity of first pulse
+
 
 % Plot time around the first pulse
 plotBufferBin = 256;
@@ -490,4 +486,4 @@ title('All pulses')
 
 % Save regression values for later
 time_sync_regression = all_P;
-save([subject_dir 'Mat Files/' save_stem  'time_sync.mat'],'time_sync_regression');
+save([subject_dir 'Mat Files/' save_stem  '_time_sync.mat'],'time_sync_regression');
