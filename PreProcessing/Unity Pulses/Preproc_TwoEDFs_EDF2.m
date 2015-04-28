@@ -109,12 +109,15 @@ close(h);
 % Remove data after last pulse
 bufferSec = 5;
 bufferBin = bufferSec*EEG.srate;
-maxTrim   = lastPulseBin + bufferBin + 1;
 
-data(:,maxTrim:end) = [];
-EEG.data(:,maxTrim:end) = [];
-EEG.times(maxTrim:end) = [];
-EEG.pnts = size(data,2);
+if size(EEG.data, 2) / EEG.srate >= lastPulseSec + bufferSec % don't trim unless the post-pulse EEG length exceeds the buffer
+    maxTrim   = firstPulseBin - bufferBin - 1;
+    data(:,1:maxTrim) = [];
+    EEG.data(:,1:maxTrim) = [];
+    EEG.times(1:maxTrim) = [];
+    EEG.pnts = size(data,2);
+end
+
 eeglab redraw;
 pop_eegplot(EEG,1,1,1);
 
