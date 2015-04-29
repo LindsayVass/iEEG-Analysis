@@ -5,20 +5,21 @@
 %% Set up script
 clc;clear;close all;
 
+addpath(genpath('/Users/Lindsay/MATLAB/functions/'));
+
 % Paths
 subjectDir    = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/';
-unityDataPath = [subjectDir 'Behavioral Data/TeleporterA/s3_FindStore_TeleporterA_FIXED.txt'];
-pulsesEDF1    = [subjectDir 'Raw Data/UCDMC15_TeleporterA_EDF1_pulse_timing.mat'];
-pulsesEDF2    = [subjectDir 'Raw Data/UCDMC15_TeleporterA_EDF2_pulse_timing.mat'];
-EEG_EDF1      = [subjectDir 'Raw Data/UCDMC15_TeleporterA_EDF1_badChansRemoved_trimmed.mat'];
-EEG_EDF2      = [subjectDir 'Raw Data/UCDMC15_TeleporterA_EDF2_badChansRemoved_trimmed.mat'];
+unityDataPath = [subjectDir 'Behavioral Data/TeleporterB/s3_FindStore_TeleporterB_FIXED.txt'];
+pulsesEDF1    = [subjectDir 'Raw Data/UCDMC15_TeleporterB_EDF1_pulse_timing.mat'];
+pulsesEDF2    = [subjectDir 'Raw Data/UCDMC15_TeleporterB_EDF2_pulse_timing.mat'];
+EEG_EDF1      = [subjectDir 'Raw Data/UCDMC15_TeleporterB_EDF1_badChansRemoved_trimmed.mat'];
+EEG_EDF2      = [subjectDir 'Raw Data/UCDMC15_TeleporterB_EDF2_badChansRemoved_trimmed.mat'];
 
 % save files
-unepochedEEG1_savefile   = [subjectDir 'Raw Data/UCDMC15_TeleporterA_EDF1_unepoched.set'];
-unepochedEEG2_savefile   = [subjectDir 'Raw Data/UCDMC15_TeleporterA_EDF2_unepoched.set'];
-epochedEEG_savefile      = [subjectDir 'Raw Data/UCDMC15_TeleporterA_epoched_notclean.set'];
-cleanEpochedEEG_savefile = [subjectDir 'Epoched Data/UCDMC15_TeleporterA_epoched.set'];
-epochs_saveFile          = [subjectDir 'Mat Files/UCDMC15_TeleporterA_Epochs_Entry.mat'];
+unepochedEEG1_savefile   = [subjectDir 'Raw Data/UCDMC15_TeleporterB_EDF1_unepoched.set'];
+unepochedEEG2_savefile   = [subjectDir 'Raw Data/UCDMC15_TeleporterB_EDF2_unepoched.set'];
+epochedEEG_savefile      = [subjectDir 'Epoched Data/UCDMC15_TeleporterB_epoched.set'];
+epochs_saveFile          = [subjectDir 'Mat Files/UCDMC15_TeleporterB_Epochs_Entry.mat'];
 
 % Epoch start/end times in seconds
 eStart = -3;
@@ -27,6 +28,7 @@ eEnd = 6;
 % bad chans -- these channels show spiking activity, so we'll remove them
 % before re-referencing
 badChans = {'RAD1' 'RAD2' 'RAD3' 'LAD1' 'LAD2'};
+
 
  %% Load data
  fid  = fopen(unityDataPath);
@@ -133,90 +135,7 @@ badChans = {'RAD1' 'RAD2' 'RAD3' 'LAD1' 'LAD2'};
  %% Convert epochs from ticks to EEG bins
  
  teleporterInds = find(spaceTimeInd);
- epochsEDF1 = [];
- epochsEDF2 = [];
- 
- % load tick/EEG conversions
- load(pulsesEDF1);
- indEEG1 = indEEG;
- unityTicks1 = unityTicks;
- 
- load(pulsesEDF2);
- indEEG2 = indEEG;
- unityTicks2 = unityTicks;
- 
- % loop through trials
- fitRange = 5;
- 
- for thisTrial = 1:length(teleporterInds)
-     
-     onsetTick = systemTime(teleporterInds(thisTrial));
-     
-     if (onsetTick - unityTicks1(end) < 0) % if trial in EDF1
-         
-         % find the pulse time (in ticks) closest to our tick
-         tickDiff  = abs(onsetTick - unityTicks1);
-         minDiffInd = find(tickDiff == min(tickDiff));
-         
-         % get a range of values before and after
-         fitInds = [minDiffInd-fitRange:1:minDiffInd+fitRange];
-         
-         % get fit of line using the inds selected above
-         fit_P = polyfit(unityTicks1(fitInds),indEEG1(fitInds),1);
-         fit_y = polyval(fit_P,unityTicks1(fitInds));
-         onsetBin = round(onsetTick*fit_P(1) + fit_P(2));
-         
-         h = figure;
-         plot(unityTicks1(fitInds),indEEG1(fitInds),'k*')
-         hold on;
-         plot(unityTicks1(fitInds),fit_y,'-')
-         scatter(onsetTick,onsetBin,'ro')
-         
-         % make sure the fit looks good or else quit
-         answer = questdlg('Does the fit look good?');
-         if(strcmpi(answer,'Yes') ~= 1)
-             break
-         end
-         
-         close(h);
-         
-         epochsEDF1(end+1) = onsetBin;
-         
-     elseif (onsetTick - unityTicks2(1) < 0) % trial in lost EEG between EDF files
-         continue
-     else % trial in EDF2
-         
-         % find the pulse time (in ticks) closest to our tick
-         tickDiff  = abs(onsetTick - unityTicks2);
-         minDiffInd = find(tickDiff == min(tickDiff));
-         
-         % get a range of values before and after
-         fitInds = [minDiffInd-fitRange:1:minDiffInd+fitRange];
-         
-         % get fit of line using the inds selected above
-         fit_P = polyfit(unityTicks2(fitInds),indEEG2(fitInds),1);
-         fit_y = polyval(fit_P,unityTicks2(fitInds));
-         onsetBin = round(onsetTick*fit_P(1) + fit_P(2));
-         
-         h = figure;
-         plot(unityTicks2(fitInds),indEEG2(fitInds),'k*')
-         hold on;
-         plot(unityTicks2(fitInds),fit_y,'-')
-         scatter(onsetTick,onsetBin,'ro')
-         
-         % make sure the fit looks good or else quit
-         answer = questdlg('Does the fit look good?');
-         if(strcmpi(answer,'Yes') ~= 1)
-             break
-         end
-         
-         close(h);
-         
-         epochsEDF2(end+1) = onsetBin;
-         
-     end
- end
- 
+ [~, epochsEDF1, epochsEDF2] = unityPulseTiming(systemTime(teleporterInds), pulsesEDF1, pulsesEDF2);
  
  %% For each epoch, set the trial type
  
@@ -233,7 +152,6 @@ badChans = {'RAD1' 'RAD2' 'RAD3' 'LAD1' 'LAD2'};
  % Near Space Long Time  = 2
  % Far Space Short Time  = 3
  % Far Space Long Time   = 4
- 
  
  eSpace = zeros(size(epochs));
  eTime  = eSpace;
@@ -425,45 +343,58 @@ if EEG2_eventStart < 1
 end
 
 % Create epochs
-[EEG1] = pop_epoch(EEG1,{},[-3 6]);
-[EEG2] = pop_epoch(EEG2,{},[-3 6]);
+[EEG1] = pop_epoch(EEG1,{},[eStart eEnd]);
+[EEG2] = pop_epoch(EEG2,{},[eStart eEnd]);
 
-% Concatenate the EEG data. I've specifically removed the latency data
-% because latencies are with respect to individual EDFs, not the
-% concatenated data.
-EEG = EEG1;
-EEG.trials = EEG1.trials + EEG2.trials;
-EEG.data = cat(3,EEG1.data,EEG2.data);
-[EEG.event(EEG1.trials+1:size(EEG.data,3)).type] = deal(EEG2.event(1:end).type);
-[EEG.event.latency] = deal([]);
-newEpochNum = num2cell([EEG2.event.epoch] + EEG1.trials); % trials in EDF2 are [1:59], but we want them to be [5:63]
-[EEG.event(EEG1.trials+1:size(EEG.data,3)).epoch] = newEpochNum{:};
-[EEG.epoch(EEG1.trials+1:size(EEG.data,3)).event] = newEpochNum{:};
-[EEG.epoch.eventlatency] = deal([]);
-[EEG.epoch(EEG1.trials+1:size(EEG.data,3)).eventtype] = deal(EEG2.event(1:end).type);
+%% reject bad epochs for each EEG
+
+% manual rejection for EEG1
+clear TMPREJ;
+cmd = 'TMPREJ;';
+eegplot(EEG1.data, 'winlength', 1, 'command', cmd, 'butlabel', 'Mark for Rejection','srate',EEG1.srate,'events',EEG1.event,'limits',[eStart*1000 eEnd*1000]);
+readyNow = input('When finished rejecting epochs, press any key to continue to EEG2.','s');
+
+if exist('TMPREJ', 'var')
+    rejectedEEG1 = TMPREJ(:, 1);
+    
+    % convert to latency
+    rejectedEEG1 = rejectedEEG1 - eStart*EEG1.srate + 1;
+    
+    % find the indices of the rejected trials
+    rejectedEpochs1 = nan(size(rejectedEEG1));
+    for thisReject = 1:length(rejectedEEG1)
+        rejectedEpochs1(thisReject) = find(cell2mat({EEG1.event.latency}) == rejectedEEG1(thisReject));
+    end
+else
+    rejectedEpochs1 = [];
+end
+
+% manual rejection for EEG2
+clear TMPREJ;
+eegplot(EEG2.data, 'winlength', 1, 'command', cmd, 'butlabel', 'Mark for Rejection','srate',EEG2.srate,'events',EEG2.event,'limits',[eStart*1000 eEnd*1000]);
+readyNow = input('When finished rejecting epochs, press any key to continue.','s');
+
+if exist('TMPREJ', 'var')
+    rejectedEEG2 = TMPREJ(:, 1);
+    
+    % convert to latency
+    rejectedEEG2 = rejectedEEG2 - eStart*EEG2.srate + 1;
+    
+    % find the indices of the rejected trials
+    rejectedEpochs2 = nan(size(rejectedEEG2));
+    for thisReject = 1:length(rejectedEEG2)
+        rejectedEpochs2(thisReject) = find(cell2mat({EEG2.event.latency}) == rejectedEEG2(thisReject));
+    end
+else
+    rejectedEpochs2 = [];
+end
+
+% save the indices of the rejected epochs
+save(epochs_saveFile,'epochsEDF1','epochsEDF2','eSpace','eTime','eType','rejectedEpochs1','rejectedEpochs2');
+
+
+%% merge the two data files
+EEG = pop_mergeset(EEG1, EEG2);
 
 % Save the epoched data
 EEG = pop_saveset(EEG, 'filename', epochedEEG_savefile);
-
-%% Remove bad epochs
-eeglab;
-EEG = pop_loadset(epochedEEG_savefile);
-eeglab redraw;
-pop_eegplot(EEG,1,1,1);
-totalEpochs = size(EEG.data, 3);
-
-fprintf(' \n\n Remove bad epochs in EEGlab.\n\n Click on bad epochs to highlight them for rejection.\n To unselect an epoch, click it again.\n When done, press REJECT in bottom right.\n')
-
-keyboard;
-
-% make sure that the saved data set has fewer epochs than we started with
-% and warn us if not
-if size(EEG.data, 3) == totalEpochs
-    
-    answer = questdlg('WARNING! Data size has the same number of epochs we started with. If you rejected any epochs, this means the data did not save correctly. Stop now?','WARNING');
-    if strcmpi(answer, 'Yes') == 1
-        return
-    end
-end
-
-EEG = pop_saveset(EEG, 'filename', cleanEpochedEEG_savefile);
