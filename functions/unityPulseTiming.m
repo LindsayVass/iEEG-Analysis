@@ -1,4 +1,4 @@
-function [ticks EEGbins] = unityPulseTiming(eventTimingInTicks, EDF1PulseFile, EDF2PulseFile, fitRange)
+function [ticks EEG1bins EEG2bins] = unityPulseTiming(eventTimingInTicks, EDF1PulseFile, EDF2PulseFile, fitRange)
 % Converts timing in ticks to EEG bins using the provided pulse files. This
 % function will identify the pulses surrounding the time point of interest
 % and fit a linear model to them to convert from timing in ticks to timing
@@ -31,7 +31,8 @@ end
 
 % initialize output arrays
 ticks = eventTimingInTicks;
-EEGbins = nan(size(ticks));
+EEG1bins = [];
+EEG2bins = [];
 
 % load pulse file(s)
 load(EDF1PulseFile);
@@ -77,7 +78,7 @@ for thisEvent = 1:length(eventTimingInTicks)
         
         close(h);
         
-        EEGbins(thisEvent) = eventBin;
+        EEG1bins(end+1) = eventBin;
         
     elseif (thisTick - unityTicks2(1) < 0) % trial in lost EEG between EDF files
         warning('Event not found in time range of EDF file(s) provided');
@@ -110,7 +111,7 @@ for thisEvent = 1:length(eventTimingInTicks)
         
         close(h);
         
-        EEGbins(thisEvent) = eventBin;
+        EEG2bins(end+1) = eventBin;
         
     end
 end
