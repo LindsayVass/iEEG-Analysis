@@ -26,20 +26,20 @@ addpath(genpath('/Users/Lindsay/Documents/MATLAB/arne_code/'));
 eeglab;
 
 % set paths
-subject_dir   = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/';
-unepochedEEG1 = [subject_dir 'Raw Data/UCDMC15_TeleporterA_EDF1_unepoched.set']; % use the most pre-processed, but unepoched dataset
-unepochedEEG2 = [subject_dir 'Raw Data/UCDMC15_TeleporterA_EDF2_unepoched.set']; % leave blank if only 1 EDF
-epochsFile    = [subject_dir 'Mat Files/UCDMC15_TeleporterA_Epochs_Entry.mat']; % contains the onset and type of each epoch
-unityFile     = [subject_dir 'Behavioral Data/TeleporterA/s3_FindStore_TeleporterA_FIXED.txt']; % Unity output during navigation to find stores
-save_stem     = [subject_dir 'Mat Files/UCDMC15_TeleporterA_pepisode'];
+subject_dir   = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/';
+unepochedEEG1 = [subject_dir 'Raw Data/UCDMC14_TeleporterA_unepoched.set']; % use the most pre-processed, but unepoched dataset
+unepochedEEG2 = []; % leave blank if only 1 EDF
+epochsFile    = [subject_dir 'Mat Files/UCDMC14_TeleporterA_Epochs_Entry.mat']; % contains the onset and type of each epoch
+unityFile     = [subject_dir 'Behavioral Data/TeleporterA/s2_patientTeleporterData.txt']; % Unity output during navigation to find stores
+save_stem     = [subject_dir 'Mat Files/UCDMC14_TeleporterA_pepisode'];
 
 % select pulse timing file
-PTB_pulse_file = []; % time synchronization file for pulses from psychtoolbox
-unity_EDF1_pulse_file = [subject_dir 'Raw Data/UCDMC15_TeleporterA_EDF1_pulse_timing.mat']; % ticks/bins for pulses from unity
-unity_EDF2_pulse_file = [subject_dir 'Raw Data/UCDMC15_TeleporterA_EDF2_pulse_timing.mat']; % leave blank if only 1 EDF
+PTB_pulse_file = [subject_dir 'Mat Files/UCDMC14_TeleporterA_time_sync.mat']; % time synchronization file for pulses from psychtoolbox
+unity_EDF1_pulse_file = []; % ticks/bins for pulses from unity
+unity_EDF2_pulse_file = []; % leave blank if only 1 EDF
 
 % channel names to use
-chanList = {'RAD4' 'RAD5' 'RAD6' 'RHD2' 'RHD3' 'RHD4' 'LAD3' 'LAD4' 'LHD1' 'LHD2' 'LHD3'};
+chanList = {'LAD1' 'LHD1' 'RAD1' 'RHD1' 'RHD2'};
 
 % trial type names and corresponding eType
 trialTypeList = {'NSNT' 'NSFT' 'FSNT' 'FSFT'};
@@ -79,7 +79,7 @@ for thisChan = 1:size(EEG1.data,1)
     end
 end
 
-if exist('unepochedEEG2', 'var')
+if ~isempty(unepochedEEG2)
     [EEG2] = pop_loadset(unepochedEEG2);
     
     % find the indices of the channels of interest
@@ -96,8 +96,8 @@ end
 
 %% load unity file and identify start and end times of navigation
 fid  = fopen(unityFile);
-txtdata = textscan(fid,'%d%f%f%s%s%s%s%f%f%f','delimiter',',','Headerlines',1,'EndOfLine','\r\n'); % use this version for unity output that we fixed in Matlab
-%  data =  textscan(fid,'%d%f%f%s%s%s%s%f%f%f','delimiter',',','Headerlines',1); % use this version for raw unity output
+% txtdata = textscan(fid,'%d%f%f%s%s%s%s%f%f%f','delimiter',',','Headerlines',1,'EndOfLine','\r\n'); % use this version for unity output that we fixed in Matlab
+txtdata =  textscan(fid,'%d%f%f%s%s%s%s%f%f%f','delimiter',',','Headerlines',1); % use this version for raw unity output
 fclose(fid);
  
 systemTime = txtdata{3};
@@ -117,7 +117,7 @@ if ~isempty(PTB_pulse_file)
     endBin   = round(endTicks * time_sync_regression(1) + time_sync_regression(2));
     
     % trim EEG data based on start and end times
-    data1 = EEG1.data(:, startBin:endBin);
+    data1 = EEG1.data(chans1, startBin:endBin);
 end
 
 % unity pulses
@@ -185,7 +185,8 @@ end
 %% load epochs info
 load(epochsFile);
 if ~exist('epochsEDF1', 'var') && exist('epochs', 'var')
-    epochsEDF1 = epochs;
+    epochsEDF1 = epochs';
+    epochsEDF1   = round(epochsEDF1 * time_sync_regression(1) + time_sync_regression(2));
 end
 
 % get rid of rejected epochs
@@ -249,9 +250,11 @@ for thisType = 1:length(trialTypeList) % loop through trial types
         TELEunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(F,2), durationsNT(2));
         POSTunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(F,2), durationsNT(3));
         
-        PREunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsNT(1));
-        TELEunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsNT(2));
-        POSTunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsNT(3));
+        if exist('onsets2', 'var')
+            PREunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsNT(1));
+            TELEunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsNT(2));
+            POSTunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsNT(3));
+        end
         
         intervals = intervalsNT;
     else
@@ -260,9 +263,11 @@ for thisType = 1:length(trialTypeList) % loop through trial types
         TELEunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(F,2), durationsFT(2));
         POSTunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(F,2), durationsFT(3));
         
-        PREunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsFT(1));
-        TELEunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsFT(2));
-        POSTunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsFT(3));
+        if exist('onsets2', 'var')
+            PREunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsFT(1));
+            TELEunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsFT(2));
+            POSTunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsFT(3));
+        end
         
         intervals = intervalsFT;
     end
@@ -271,14 +276,20 @@ for thisType = 1:length(trialTypeList) % loop through trial types
         
         % file containing pepisode power info for each frequency
         outFile = strcat(save_stem,'_', chanList{thisChan},'.mat');
-        
-        PREunionVecHolder1(thisChan,:,:,:)  = getpepisodeTwoEEG(outFile, 1, onsets1{thisType} - startBin, intervals(1,2) - intervals(1,1), intervals(1), F);
-        TELEunionVecHolder1(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 1, onsets1{thisType} - startBin, intervals(2,2) - intervals(2,1), intervals(2), F);
-        POSTunionVecHolder1(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 1, onsets1{thisType} - startBin, intervals(3,2) - intervals(3,1), intervals(3), F);
-        
-        PREunionVecHolder2(thisChan,:,:,:)  = getpepisodeTwoEEG(outFile, 2, onsets2{thisType}, intervals(1,2) - intervals(1,1), intervals(1), F);
-        TELEunionVecHolder2(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 2, onsets2{thisType}, intervals(2,2) - intervals(2,1), intervals(2), F);
-        POSTunionVecHolder2(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 2, onsets2{thisType}, intervals(3,2) - intervals(3,1), intervals(3), F);
+        if exist('onsets2', 'var')
+            PREunionVecHolder1(thisChan,:,:,:)  = getpepisodeTwoEEG(outFile, 1, onsets1{thisType} - startBin, intervals(1,2) - intervals(1,1), intervals(1), F);
+            TELEunionVecHolder1(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 1, onsets1{thisType} - startBin, intervals(2,2) - intervals(2,1), intervals(2), F);
+            POSTunionVecHolder1(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 1, onsets1{thisType} - startBin, intervals(3,2) - intervals(3,1), intervals(3), F);
+            
+            PREunionVecHolder2(thisChan,:,:,:)  = getpepisodeTwoEEG(outFile, 2, onsets2{thisType}, intervals(1,2) - intervals(1,1), intervals(1), F);
+            TELEunionVecHolder2(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 2, onsets2{thisType}, intervals(2,2) - intervals(2,1), intervals(2), F);
+            POSTunionVecHolder2(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 2, onsets2{thisType}, intervals(3,2) - intervals(3,1), intervals(3), F);
+            
+        else
+            PREunionVecHolder1(thisChan,:,:,:)  = getpepisode(outFile, onsets1{thisType} - startBin, intervals(1,2) - intervals(1,1), intervals(1), F);
+            TELEunionVecHolder1(thisChan,:,:,:) = getpepisode(outFile, onsets1{thisType} - startBin, intervals(2,2) - intervals(2,1), intervals(2), F);
+            POSTunionVecHolder1(thisChan,:,:,:) = getpepisode(outFile, onsets1{thisType} - startBin, intervals(3,2) - intervals(3,1), intervals(3), F);
+        end
         
     end % thisChan
     
@@ -287,27 +298,33 @@ for thisType = 1:length(trialTypeList) % loop through trial types
     mean_TELE_1 = squeeze(nanmean(TELEunionVecHolder1,2));
     mean_POST_1 = squeeze(nanmean(POSTunionVecHolder1,2));
     
-    mean_PRE_2  = squeeze(nanmean(PREunionVecHolder2,2));
-    mean_TELE_2 = squeeze(nanmean(TELEunionVecHolder2,2));
-    mean_POST_2 = squeeze(nanmean(POSTunionVecHolder2,2));
+    if exist('onsets2', 'var')
+        mean_PRE_2  = squeeze(nanmean(PREunionVecHolder2,2));
+        mean_TELE_2 = squeeze(nanmean(TELEunionVecHolder2,2));
+        mean_POST_2 = squeeze(nanmean(POSTunionVecHolder2,2));
+    end
     
     % take the mean across epochs
     mean_PRE_1  = squeeze(nanmean(mean_PRE_1,3));
     mean_TELE_1 = squeeze(nanmean(mean_TELE_1,3));
     mean_POST_1 = squeeze(nanmean(mean_POST_1,3));
     
-    mean_PRE_2  = squeeze(nanmean(mean_PRE_2,3));
-    mean_TELE_2 = squeeze(nanmean(mean_TELE_2,3));
-    mean_POST_2 = squeeze(nanmean(mean_POST_2,3));
+    if exist('onsets2', 'var')
+        mean_PRE_2  = squeeze(nanmean(mean_PRE_2,3));
+        mean_TELE_2 = squeeze(nanmean(mean_TELE_2,3));
+        mean_POST_2 = squeeze(nanmean(mean_POST_2,3));
+    end
     
     % put into summary arrays
     PRE_1_all(thisType,:,:)  = mean_PRE_1;
     TELE_1_all(thisType,:,:) = mean_TELE_1;
     POST_1_all(thisType,:,:) = mean_POST_1;
     
-    PRE_2_all(thisType,:,:)  = mean_PRE_2;
-    TELE_2_all(thisType,:,:) = mean_TELE_2;
-    POST_2_all(thisType,:,:) = mean_POST_2;
+    if exist('onsets2', 'var')
+        PRE_2_all(thisType,:,:)  = mean_PRE_2;
+        TELE_2_all(thisType,:,:) = mean_TELE_2;
+        POST_2_all(thisType,:,:) = mean_POST_2;
+    end
     
     
 end % thisType
@@ -317,31 +334,41 @@ PRE_1_nan  = isnan(PRE_1_all);
 TELE_1_nan = isnan(TELE_1_all);
 POST_1_nan = isnan(POST_1_all);
 
-PRE_2_nan  = isnan(PRE_2_all);
-TELE_2_nan = isnan(TELE_2_all);
-POST_2_nan = isnan(POST_2_all);
+if exist('onsets2' ,'var')
+    PRE_2_nan  = isnan(PRE_2_all);
+    TELE_2_nan = isnan(TELE_2_all);
+    POST_2_nan = isnan(POST_2_all);
+end
 
 % if one condition is all NaN, this means there were no trials of that type
 % in that EEG, so use the other EEG's data instead
-for thisType = 1:length(trialTypeList)
+if ~exist('onsets2', 'var')
+    PRE_all = PRE_1_all;
+    TELE_all = TELE_1_all;
+    POST_all = POST_1_all;
+else
     
-    % if EEG1 missing data
-    if sum(sum(PRE_1_nan(thisType,:,:))) == size(PRE_1_nan,2) * size(PRE_1_nan,3)
-        PRE_all(thisType,:,:)  = PRE_2_all(thisType,:,:);
-        TELE_all(thisType,:,:) = TELE_2_all(thisType,:,:);
-        POST_all(thisType,:,:) = POST_2_all(thisType,:,:);
-    % if EEG2 missing data    
-    elseif sum(sum(PRE_2_nan(thisType,:,:))) == size(PRE_2_nan,2) * size(PRE_2_nan,3)
-        PRE_all(thisType,:,:) = PRE_1_all(thisType,:,:);
-        TELE_all(thisType,:,:) = TELE_1_all(thisType,:,:);
-        POST_all(thisType,:,:) = POST_1_all(thisType,:,:);
-    else % both have data
-        PRE_all(thisType,:,:) = (PRE_1_all(thisType,:,:) + PRE_2_all(thisType,:,:)) / 2;
-        TELE_all(thisType,:,:) = (TELE_1_all(thisType,:,:) + TELE_2_all(thisType,:,:)) / 2;
-        POST_all(thisType,:,:) = (POST_1_all(thisType,:,:) + POST_2_all(thisType,:,:)) / 2;
+    for thisType = 1:length(trialTypeList)
+        
+        % if EEG1 missing data
+        if sum(sum(PRE_1_nan(thisType,:,:))) == size(PRE_1_nan,2) * size(PRE_1_nan,3)
+            PRE_all(thisType,:,:)  = PRE_2_all(thisType,:,:);
+            TELE_all(thisType,:,:) = TELE_2_all(thisType,:,:);
+            POST_all(thisType,:,:) = POST_2_all(thisType,:,:);
+            % if EEG2 missing data
+        elseif sum(sum(PRE_2_nan(thisType,:,:))) == size(PRE_2_nan,2) * size(PRE_2_nan,3)
+            PRE_all(thisType,:,:) = PRE_1_all(thisType,:,:);
+            TELE_all(thisType,:,:) = TELE_1_all(thisType,:,:);
+            POST_all(thisType,:,:) = POST_1_all(thisType,:,:);
+        else % both have data
+            PRE_all(thisType,:,:) = (PRE_1_all(thisType,:,:) + PRE_2_all(thisType,:,:)) / 2;
+            TELE_all(thisType,:,:) = (TELE_1_all(thisType,:,:) + TELE_2_all(thisType,:,:)) / 2;
+            POST_all(thisType,:,:) = (POST_1_all(thisType,:,:) + POST_2_all(thisType,:,:)) / 2;
+            
+        end
         
     end
-    
+
 end
 
 % combine into one array
@@ -386,29 +413,29 @@ PepisodeByFreqBand = permute(PepisodeByFreqBand, [3 2 4 1]);
 save([save_stem '_by_condition.mat'],'PepisodeByFreq','PepisodeByFreqBand','F','trialTypeList','chanList');
 
 % %% plot mean across channels
-% meanPepisode = squeeze(mean(PepisodeByFreqBand,1));
-% 
-% h = figure;
-% 
-% ax = subplot(221);
-% bar(squeeze(meanPepisode(1, :, :)));
-% set(gca,'XTickLabel',{'delta','theta','alpha','beta','gamma'});
-% title('NSNT')
-% 
-% ax = subplot(222);
-% bar(squeeze(meanPepisode(2, :, :)));
-% set(gca,'XTickLabel',{'delta','theta','alpha','beta','gamma'});
-% title('NSFT')
-% 
-% ax = subplot(223);
-% bar(squeeze(meanPepisode(3, :, :)));
-% set(gca,'XTickLabel',{'delta','theta','alpha','beta','gamma'});
-% title('FSNT')
-% 
-% ax = subplot(224);
-% bar(squeeze(meanPepisode(4, :, :)));
-% set(gca,'XTickLabel',{'delta','theta','alpha','beta','gamma'});
-% title('FSFT')
+meanPepisode = squeeze(mean(PepisodeByFreqBand,1));
+
+h = figure;
+
+ax = subplot(221);
+bar(squeeze(meanPepisode(1, :, :)));
+set(gca,'XTickLabel',{'delta','theta','alpha','beta','gamma'});
+title('NSNT')
+
+ax = subplot(222);
+bar(squeeze(meanPepisode(2, :, :)));
+set(gca,'XTickLabel',{'delta','theta','alpha','beta','gamma'});
+title('NSFT')
+
+ax = subplot(223);
+bar(squeeze(meanPepisode(3, :, :)));
+set(gca,'XTickLabel',{'delta','theta','alpha','beta','gamma'});
+title('FSNT')
+
+ax = subplot(224);
+bar(squeeze(meanPepisode(4, :, :)));
+set(gca,'XTickLabel',{'delta','theta','alpha','beta','gamma'});
+title('FSFT')
 % 
 % 
 % % make plots for each electrode
@@ -436,18 +463,3 @@ save([save_stem '_by_condition.mat'],'PepisodeByFreq','PepisodeByFreqBand','F','
 %     set(gca,'XTickLabel',{'delta','theta','alpha','beta','gamma'});
 %     title('FSFT')
 % end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
