@@ -26,20 +26,20 @@ addpath(genpath('/Users/Lindsay/Documents/MATLAB/arne_code/'));
 eeglab;
 
 % set paths
-subject_dir   = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/';
-unepochedEEG1 = [subject_dir 'Raw Data/UCDMC14_TeleporterB_unepoched.set']; % use the most pre-processed, but unepoched dataset
-unepochedEEG2 = []; % leave blank if only 1 EDF
-epochsFile    = [subject_dir 'Mat Files/UCDMC14_TeleporterB_Epochs_Entry.mat']; % contains the onset and type of each epoch
-unityFile     = [subject_dir 'Behavioral Data/TeleporterB/s2_patientTeleporterData 2.txt']; % Unity output during navigation to find stores
-save_stem     = [subject_dir 'Mat Files/UCDMC14_TeleporterB_pepisode'];
+subject_dir   = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/';
+unepochedEEG1 = [subject_dir 'Raw Data/UCDMC15_TeleporterA_EDF1_unepoched.set']; % use the most pre-processed, but unepoched dataset
+unepochedEEG2 = [subject_dir 'Raw Data/UCDMC15_TeleporterA_EDF2_unepoched.set']; % leave blank if only 1 EDF
+epochsFile    = [subject_dir 'Mat Files/UCDMC15_TeleporterA_Epochs_Entry.mat']; % contains the onset and type of each epoch
+unityFile     = [subject_dir 'Behavioral Data/TeleporterA/s3_FindStore_TeleporterA_FIXED.txt']; % Unity output during navigation to find stores
+save_stem     = [subject_dir 'Mat Files/UCDMC15_TeleporterA_pepisode'];
 
 % select pulse timing file
-PTB_pulse_file = [subject_dir 'Mat Files/UCDMC14_TeleporterB_time_sync.mat']; % time synchronization file for pulses from psychtoolbox
-unity_EDF1_pulse_file = []; % ticks/bins for pulses from unity
-unity_EDF2_pulse_file = []; % leave blank if only 1 EDF
+PTB_pulse_file = []; % time synchronization file for pulses from psychtoolbox
+unity_EDF1_pulse_file = [subject_dir 'Raw Data/UCDMC15_TeleporterA_EDF1_pulse_timing.mat']; % ticks/bins for pulses from unity
+unity_EDF2_pulse_file = [subject_dir 'Raw Data/UCDMC15_TeleporterA_EDF2_pulse_timing.mat']; % leave blank if only 1 EDF
 
 % channel names to use
-chanList = {'LAD1' 'LHD1' 'RAD1' 'RHD1' 'RHD2'};
+chanList = {'RAD4' 'RAD5' 'RAD6' 'RHD2' 'RHD3' 'RHD4' 'LAD3' 'LAD4' 'LHD1' 'LHD2' 'LHD3'};
 
 % trial type names and corresponding eType
 trialTypeList = {'NSNT' 'NSFT' 'FSNT' 'FSFT'};
@@ -304,9 +304,20 @@ for thisType = 1:length(trialTypeList) % loop through trial types
         mean_TELE_2_time = squeeze(nanmean(TELEunionVecHolder2,4));
         mean_POST_2_time = squeeze(nanmean(POSTunionVecHolder2,4));
         
-        mean_PRE_1_time = cat(2, mean_PRE_1_time, mean_PRE_2_time);
-        mean_TELE_1_time = cat(2, mean_TELE_1_time, mean_TELE_2_time);
-        mean_POST_1_time = cat(2, mean_POST_1_time, mean_POST_2_time);
+        % if there aren't any trials in one set, use the other; otherwise
+        % concatenate
+        if length(size(mean_PRE_1_time)) == 2
+            
+            mean_PRE_1_time = mean_PRE_2_time;
+            mean_TELE_1_time = mean_TELE_2_time;
+            mean_POST_1_time = mean_POST_2_time;
+            
+        elseif length(size(mean_PRE_2_time)) == 2
+        else
+            mean_PRE_1_time = cat(2, mean_PRE_1_time, mean_PRE_2_time);
+            mean_TELE_1_time = cat(2, mean_TELE_1_time, mean_TELE_2_time);
+            mean_POST_1_time = cat(2, mean_POST_1_time, mean_POST_2_time);
+        end
     end
     
     tempdata = {mean_PRE_1_time; mean_TELE_1_time; mean_POST_1_time};
