@@ -27,14 +27,14 @@ eeglab;
 
 % set paths
 subject_dir   = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/';
-unepochedEEG1 = [subject_dir 'Raw Data/UCDMC14_TeleporterA_unepoched.set']; % use the most pre-processed, but unepoched dataset
+unepochedEEG1 = [subject_dir 'Raw Data/UCDMC14_TeleporterB_unepoched.set']; % use the most pre-processed, but unepoched dataset
 unepochedEEG2 = []; % leave blank if only 1 EDF
-epochsFile    = [subject_dir 'Mat Files/UCDMC14_TeleporterA_Epochs_Entry.mat']; % contains the onset and type of each epoch
-unityFile     = [subject_dir 'Behavioral Data/TeleporterA/s2_patientTeleporterData.txt']; % Unity output during navigation to find stores
-save_stem     = [subject_dir 'Mat Files/UCDMC14_TeleporterA_pepisode'];
+epochsFile    = [subject_dir 'Mat Files/UCDMC14_TeleporterB_Epochs_Entry.mat']; % contains the onset and type of each epoch
+unityFile     = [subject_dir 'Behavioral Data/TeleporterB/s2_patientTeleporterData 2.txt']; % Unity output during navigation to find stores
+save_stem     = [subject_dir 'Mat Files/UCDMC14_TeleporterB_pepisode'];
 
 % select pulse timing file
-PTB_pulse_file = [subject_dir 'Mat Files/UCDMC14_TeleporterA_time_sync.mat']; % time synchronization file for pulses from psychtoolbox
+PTB_pulse_file = [subject_dir 'Mat Files/UCDMC14_TeleporterB_time_sync.mat']; % time synchronization file for pulses from psychtoolbox
 unity_EDF1_pulse_file = []; % ticks/bins for pulses from unity
 unity_EDF2_pulse_file = []; % leave blank if only 1 EDF
 
@@ -51,7 +51,7 @@ amplitudeThresh = 95; % percent of distribution
 
 % if the distribution of power across the recording has already been
 % calculated, set this to 1
-skipCompute = 0;
+skipCompute = 1;
 
 % frequencies for a bandpass filter, to filter out the 60 Hz line noise
 filtFreq = [59.9 60.9];
@@ -241,6 +241,7 @@ PRE_2_all  = PRE_1_all;
 TELE_2_all = PRE_1_all;
 POST_2_all = PRE_1_all;
 
+allEpochDataDimNames = {'Electrodes x Epochs x Frequencies'};
 
 for thisType = 1:length(trialTypeList) % loop through trial types
     
@@ -293,6 +294,24 @@ for thisType = 1:length(trialTypeList) % loop through trial types
         
     end % thisChan
     
+    % take the man across time so we can save out the data for each epoch
+    mean_PRE_1_time = squeeze(nanmean(PREunionVecHolder1,4));
+    mean_TELE_1_time = squeeze(nanmean(TELEunionVecHolder1,4));
+    mean_POST_1_time = squeeze(nanmean(POSTunionVecHolder1,4));
+    
+    if exist('onsets2','var')
+        mean_PRE_2_time = squeeze(nanmean(PREunionVecHolder2,4));
+        mean_TELE_2_time = squeeze(nanmean(TELEunionVecHolder2,4));
+        mean_POST_2_time = squeeze(nanmean(POSTunionVecHolder2,4));
+        
+        mean_PRE_1_time = cat(2, mean_PRE_1_time, mean_PRE_2_time);
+        mean_TELE_1_time = cat(2, mean_TELE_1_time, mean_TELE_2_time);
+        mean_POST_1_time = cat(2, mean_POST_1_time, mean_POST_2_time);
+    end
+    
+    tempdata = {mean_PRE_1_time; mean_TELE_1_time; mean_POST_1_time};
+    allEpochData(thisType) = {tempdata};
+    
     % take the mean across epochs
     mean_PRE_1  = squeeze(nanmean(PREunionVecHolder1,2));
     mean_TELE_1 = squeeze(nanmean(TELEunionVecHolder1,2));
@@ -328,6 +347,9 @@ for thisType = 1:length(trialTypeList) % loop through trial types
     
     
 end % thisType
+
+% save data for all epochs
+save([save_stem '_all_epochs.mat'], 'allEpochData','allEpochDataDimNames');
 
 % find nans
 PRE_1_nan  = isnan(PRE_1_all);
