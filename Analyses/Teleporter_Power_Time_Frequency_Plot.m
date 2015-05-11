@@ -12,11 +12,11 @@ eeglab;
 
 subjectDir     = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/';
 epochedEEGFile = [subjectDir 'Epoched Data/UCDMC15_TeleporterA_epoched.set'];
-baselineFile   = [subjectDir 'Mat Files/UCDMC15_TeleporterA_FreeExplore_baseline.mat'];
 saveStem       = [subjectDir 'Figures/UCDMC15_TeleporterA_'];
 
 % time range to plot
 plottime = [-1000 4000]; % in ms relative to teleporter entry
+baselinetime = [-1500 -1200]; % in ms relative to teleporter entry
 
 % wavelet parameters
 samplerate  = 512;
@@ -35,24 +35,9 @@ trialCodeList = {'11' '12' '21' '22'}; % labels in the EEG events
 [freqSelect, ~] = listdlg('ListString',cellstr(num2str(F'))','PromptString','Select frequencies to plot');
 
 %% Load data
-
 EEG = pop_loadset(epochedEEGFile);
-load(baselineFile);
 
-%% Get rid of channels we won't analyze
-chans = [];
-for thisChan = 1:size(EEG.data,1)
-    thisChanName = {EEG.chanlocs(thisChan).labels};
-    goodChanInd = strcmpi(thisChanName,chanList);
-    if sum(goodChanInd(:)) > 0
-        chans(end+1) = thisChan;
-    end
-end
-
-
-data = EEG.data(chans,:,:); % keep only channels of interest
-
-% Index epochs by trial type
+%% Index epochs by trial type
 trialTypes = {EEG.event.type};
 trialInds  = cell(length(trialTypeList),1);
 
@@ -82,17 +67,21 @@ n_conv_pow2    = pow2(nextpow2(n_convolution));
 wavelet_cycles = 6;
 
 
-% define plot period
+% define plot period and baseline period
 plotind  = find(EEG.times >= plottime(1) & EEG.times <= plottime(2));
-
+baselineInd  = find(EEG.times >= baselinetime(1) & EEG.times <= baselinetime(2));
 
 %% Generate time-frequency plots for each electrode
 default_clim = [-2 2];
 
-for thisChan = 1:length(chans)
+for thisChan = 1:length(chanList)
     
     % clear user-defined color limits
     clear user_clim;
+    
+    % find this channel in the data set
+    thisChanName = chanList{thisChan};
+    chanInd = find(strcmpi(thisChanName, {EEG.chanlocs.labels}));
     
     % initialize array to hold mean time-frequency for each of the trial
     % types
@@ -110,7 +99,7 @@ for thisChan = 1:length(chans)
         for thisEpoch = 1:size(trialInds{thisType,1},2)
             
             % FFT of data (note: this doesn't change on frequency iteration)
-            fft_data = fft(squeeze(data(thisChan,:,epochInds(thisEpoch))),n_conv_pow2);
+            fft_data = fft(squeeze(EEG.data(chanInd,:,epochInds(thisEpoch))),n_conv_pow2);
             
             % initialize output time-frequency data
             tf_data = zeros(length(frequencies),EEG.pnts);
@@ -132,9 +121,7 @@ for thisChan = 1:length(chans)
             end % thisFreq
             
             % baseline correct
-            thisChanName = EEG.chanlocs(chans(thisChan)).labels;
-            baselineInd = find(strcmpi(thisChanName,chanNames) == 1);
-            baseline = squeeze(meanPower(baselineInd,freqSelect))';
+            baseline = mean(tf_data(:,baselineInd),2);
             dbconverted = 10*log10(bsxfun(@rdivide,tf_data,baseline));
             
             % put data in summary array
