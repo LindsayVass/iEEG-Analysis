@@ -30,10 +30,12 @@ minute = minute(2:end);
 sec = sec(2:end);
 EEG.start_time = ([num2str(hour),':',num2str(minute),'.',num2str(sec)]);
 
-% In order to determine the reference time series, you should determine
-% which channels are bad and leave them out of the average. Average all
-% time series together to get the reference time series.
-hdr.label = cellfun(@(x) x(4:end-3),hdr.label(1:end),'UniformOutput',false);
+% Clean up electrode names
+tempLabel = hdr.label;
+tempLabel = strrep(tempLabel,'EEG','');
+tempLabel = strrep(tempLabel,'Ref','');
+
+hdr.label = tempLabel;
 
 % Work on channel locations, inserting dummy information
 ctr=1;
