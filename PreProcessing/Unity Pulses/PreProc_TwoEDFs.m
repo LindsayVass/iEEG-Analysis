@@ -41,19 +41,19 @@ addpath(genpath('/Users/Lindsay/Documents/MATLAB/functions/'))
 
 % Make directories to put our data into
 cd(subject_dir);
-if ~exist('PreProcessing Intermediates','dir')
+if ~exist([subject_dir 'PreProcessing Intermediates'],'dir')
     system('mkdir PreProcessing\ Intermediates');
 end
 
-if ~exist('Epoched Data','dir')
+if ~exist([subject_dir 'Epoched Data'],'dir')
     system('mkdir Epoched\ Data');
 end
 
-if ~exist('Mat Files','dir')
+if ~exist([subject_dir 'Mat Files'],'dir')
     system('mkdir Mat\ Files');
 end
 
-if ~exist('Figures','dir')
+if ~exist([subject_dir 'Figures'],'dir')
     system('mkdir Figures');
 end
 
