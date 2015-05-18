@@ -6,8 +6,8 @@
 clear all;close all;clc;
 
 %% Define parameters for pre-processing
-subject_dir = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15_TEST/';
-subject_id  = 'UCDMC15_TEST';
+subject_dir = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC15/';
+subject_id  = 'UCDMC15';
 teleporter  = 'TeleporterA';
 edf_file_1  = [subject_dir 'Raw Data/UCDMC15_04_01_15_teleporter.edf'];
 edf_file_2  = [subject_dir 'Raw Data/UCDMC15_04_01_15_teleporter1.edf'];
@@ -25,6 +25,8 @@ depthNames = {'LAD','LHD','RAD','RHD'};
 eStart = -3;
 eEnd = 6;
 
+labelsToRemove_noSpikes = {'spike','complex','other'};
+labelsToRemove_noWaves = {'sharpWave'};
 %% Set up filenames and paths
 edf_files = {edf_file_1, edf_file_2};
 
@@ -36,7 +38,7 @@ pulseSaveFile = [subject_dir 'Mat Files/' subject_id '_' teleporter '_pulses.mat
 
 addpath(genpath(subject_dir))
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/iEEG/Amber Scripts/'))
-addpath(genpath('/Users/Lindsay/Documents/MATLAB/eeglab13_3_2b/'))
+addpath(genpath('/Users/Lindsay/Documents/MATLAB/eeglab13_4_4b/'))
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/functions/'))
 
 % Make directories to put our data into
@@ -300,68 +302,10 @@ for thisEDF = 1:length(edf_files)
         button2 = 'Redo pre-processing';
         answer = questdlg(question, questTitle, button1, button2, button2);
         
-        if strcmpi(button2,answer) == 1
-            
-            
-            load(['PreProcessing Intermediates/' save_stems{thisEDF} '_badChansRemoved_trimmed.mat']);
-            
-            % select electrodes to use as reference
-            refChans = 1:1:size(EEG.data,1);
-            refChans(refChans == markerChanNumber) = [];
-            for thisChan = 1:length(spikingChans)
-                refChans(refChans == spikingChans(thisChan)) = [];
-            end
-            
-            % re-reference
-            refEEG = mean(EEG.data(refChans,:,:),1);
-            refEEG = repmat(refEEG,[size(EEG.data,1)-1 1 1]);
-            EEG.data(1:end-1,:,:) = EEG.data(1:end-1,:,:) - refEEG;
-            
-            % save the re-referenced data
-            pop_saveset(EEG,['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched.set']);
-            
-            %% Separate the data for each depth electrode
-            chanNames = char({EEG.chanlocs.labels});
-            chanNames = chanNames(:,1:3);
-            chanNames = cellstr(chanNames);
-            
-            % Save a separate data set for each depth electrode
-            for thisType = 1:length(depthNames)
-                
-                % find all channels on this electrode
-                ind = strcmpi(depthNames(thisType),chanNames);
-                
-                % save a new dataset with just channels on this electrode
-                EEGsub = EEG;
-                EEGsub.data(ind==0,:,:) = [];
-                EEGsub.chanlocs([ind == 0]) = [];
-                EEGsub.nbchan = size(EEGsub.data,1);
-                pop_saveset(EEGsub, ['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisType} '.set']);
-                
-            end
-            
-            % Load the data set for each electrode and mark time periods with spikes.
-            % Then set those time periods as NaN in the original dataset.
-            
-            for thisType = 1:length(depthNames)
-                
-                EEG = pop_loadset(['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisType} '.set']);
-                eeglab redraw;
-                pop_eegplot(EEG,1,1,1);
-                
-                input(['\n\n\nIdentify the time periods that show spiking activity and' ...
-                    '\nhighlight them in EEGlab by clicking and dragging. When all spikes'...
-                    '\nhave been found, click REJECT in the bottom right. Then press ENTER'...
-                    '\nto continue to the next set of electrodes.'])
-                pop_saveset(EEG, ['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisType} '_noSpikes.set']);
-                
-            end
-            
+        if strcmpi(button1,answer) == 1
+            continue
         end
-        
     else
-        
-        
         load(['PreProcessing Intermediates/' save_stems{thisEDF} '_badChansRemoved_trimmed.mat']);
         
         % select electrodes to use as reference
@@ -379,44 +323,110 @@ for thisEDF = 1:length(edf_files)
         % save the re-referenced data
         pop_saveset(EEG,['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched.set']);
         
-        %% Separate the data for each depth electrode
-        chanNames = char({EEG.chanlocs.labels});
-        chanNames = chanNames(:,1:3);
-        chanNames = cellstr(chanNames);
+    end
+    
+end % thisEDF
+
+%% Separate the data for each depth electrode
+chanNames = char({EEG.chanlocs.labels});
+chanNames = chanNames(:,1:3);
+chanNames = cellstr(chanNames);
+
+
+for thisEDF = 1:length(edf_files)
+    EEG = pop_loadset(['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched.set']);
+    % Save a separate data set for each depth electrode
+    for thisType = 1:length(depthNames)
         
-        % Save a separate data set for each depth electrode
-        for thisType = 1:length(depthNames)
-            
-            % find all channels on this electrode
-            ind = strcmpi(depthNames(thisType),chanNames);
-            
-            % save a new dataset with just channels on this electrode
-            EEGsub = EEG;
-            EEGsub.data(ind==0,:,:) = [];
-            EEGsub.chanlocs([ind == 0]) = [];
-            EEGsub.nbchan = size(EEGsub.data,1);
-            pop_saveset(EEGsub, ['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisType} '.set']);
-            
-        end
+        % find all channels on this electrode
+        ind = strcmpi(depthNames(thisType),chanNames);
         
-        % Load the data set for each electrode and mark time periods with spikes.
-        % Then set those time periods as NaN in the original dataset.
+        % save a new dataset with just channels on this electrode
+        EEGsub = EEG;
+        EEGsub.data(ind==0,:,:) = [];
+        EEGsub.chanlocs([ind == 0]) = [];
+        EEGsub.nbchan = size(EEGsub.data,1);
+        pop_saveset(EEGsub, ['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisType} '.set']);
         
-        for thisType = 1:length(depthNames)
+    end
+    
+end % thisEDF
+
+%% Annotate data with spikes and waves
+for thisEDF = 1:length(edf_files)
+    
+    % Load the data set for each electrode and mark time periods with spikes.
+    % Then set those time periods as NaN in the original dataset.
+    if thisEDF == 1
+        VISED_CONFIG = pop_edit_vised_config('vised_config.cfg');
+    end
+    for thisType = 1:length(depthNames)
+        
+        if exist(['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisType} '_noSpikes_noWaves.set'],'file')
+            % Ask user whether to use the old pulse timing file or re-calculate a
+            % new one
+            question = 'You already have marked spikes for this channel. What would you like to do?';
+            questTitle = 'Redo pre-processing?';
+            button1 = 'Use existing files';
+            button2 = 'Redo pre-processing';
+            answer = questdlg(question, questTitle, button1, button2, button2);
+            
+            if strcmpi(answer,button1) == 1
+                continue
+            end
+            
+        else
             
             EEG = pop_loadset(['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisType} '.set']);
+            EEG = eeg_checkset(EEG);
             eeglab redraw;
-            pop_eegplot(EEG,1,1,1);
             
-            input(['\n\n\nIdentify the time periods that show spiking activity and' ...
-                '\nhighlight them in EEGlab by clicking and dragging. When all spikes'...
-                '\nhave been found, click REJECT in the bottom right. Then press ENTER'...
-                '\nto continue to the next set of electrodes.'])
-            pop_saveset(EEG, ['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisType} '_noSpikes.set']);
+            % Initiate marks structure
+            EEG.marks = marks_init(size(EEG.data), 0);
+            EEG.marks = marks_add_label(EEG.marks, 'time_info', ...
+                {'spike', [1, 0, 0], zeros(1, EEG.pnts)});
+            EEG.marks = marks_add_label(EEG.marks, 'time_info', ...
+                {'sharpWave', [0, 1, 0], zeros(1, EEG.pnts)});
+            EEG.marks = marks_add_label(EEG.marks, 'time_info', ...
+                {'complex', [0, 0, 1], zeros(1, EEG.pnts)});
+            EEG.marks = marks_add_label(EEG.marks, 'time_info', ...
+                {'other', [1, 0, 1], zeros(1, EEG.pnts)});
             
+            % Annotate the data
+            EEG = pop_vised(EEG, 'pop_gui', 'off');
+            uiwait;
+            
+            % Save the marked dataset
+            pop_saveset(EEG, ['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisType} '_marked.set']);
+            
+            % Save version with spikes removed
+            indexes = marks_label2index(EEG.marks.time_info, labelsToRemove_noSpikes, 'indexes','exact','on');
+            
+            if isempty(indexes)
+                warning('No spikes found. Saving the data as it is.')
+                EEG = pop_saveset(EEG, ['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisType} '_noSpikes.set']);
+            else
+                
+                [EEG,~]=pop_marks_select_data(EEG,'time marks',indexes)
+                EEG = pop_saveset(EEG, ['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisType} '_noSpikes.set']);
+            end
+            
+            % Save version with spikes and waves removed
+            indexes = marks_label2index(EEG.marks.time_info, labelsToRemove_noWaves, 'indexes', 'exact', 'on');
+            
+            if isempty(indexes)
+                warning('No sharp waves found. Saving the data as it is.')
+                EEG = pop_saveset(EEG, ['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisType} '_noSpikes_noWaves.set']);
+            else
+                [EEG,~] = pop_marks_select_data(EEG, 'time marks', indexes)
+                EEG = pop_saveset(EEG, ['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisType} '_noSpikes_noWaves.set']);
+            end
         end
     end
-end
+    
+end % thisEDF
+
+
 
 %% EPOCH the data
 
@@ -796,6 +806,7 @@ else
             
             % get a range of values before and after
             fitInds = [minDiffInd-fitRange:1:minDiffInd+fitRange];
+            fitInds(fitInds > length(indEEG1)) = [];
             
             % get fit of line using the inds selected above
             fit_P = polyfit(unityTicks1(fitInds),indEEG1(fitInds),1);
@@ -828,6 +839,7 @@ else
             
             % get a range of values before and after
             fitInds = [minDiffInd-fitRange:1:minDiffInd+fitRange];
+            fitInds(fitInds < 1) = [];
             
             % get fit of line using the inds selected above
             fit_P = polyfit(unityTicks2(fitInds),indEEG2(fitInds),1);
@@ -907,7 +919,7 @@ else
     save(epochs_saveFile,'epochsEDF1','epochsEDF2','eSpace','eTime','eType');
 end
 
-%% Epoch the EEG data
+%% Epoch the 'noSpikes' EEG data
 load([subject_dir 'Mat Files/' subject_id '_' teleporter '_Epochs_Entry.mat']);
 for thisDepth = 1:length(depthNames)
     
@@ -969,6 +981,73 @@ for thisDepth = 1:length(depthNames)
     EEG(3) = pop_mergeset(EEG(1), EEG(2));
     
     % Save epoched data
-    pop_saveset(EEG(3), ['Epoched Data/' subject_id '_' teleporter '_epoched_' depthNames{thisDepth} '.set']);
+    pop_saveset(EEG(3), ['Epoched Data/' subject_id '_' teleporter '_epoched_' depthNames{thisDepth} '_noSpikes.set']);
+    
+end
+
+
+%% Epoch the 'noSpikes_noWaves' EEG
+load([subject_dir 'Mat Files/' subject_id '_' teleporter '_Epochs_Entry.mat']);
+for thisDepth = 1:length(depthNames)
+    
+    % load the two EEG datasets
+    clear EEG;
+    EEG(1) = pop_loadset(['PreProcessing Intermediates/' save_stems{1} '_unepoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
+    EEG(2) = pop_loadset(['PreProcessing Intermediates/' save_stems{2} '_unepoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
+    
+    % Insert events into EEG
+    thisEpoch = 1;
+    numSpikes = size(EEG(1).event,2);
+    for n = numSpikes+1:numSpikes+length(epochsEDF1)
+        
+        EEG(1).event(n).latency = epochsEDF1(thisEpoch);
+        
+        if eSpace(thisEpoch) == 1 && eTime(thisEpoch) == 1
+            EEG(1).event(n).type = '11';
+        elseif eSpace(thisEpoch) == 1 && eTime(thisEpoch) == 2
+            EEG(1).event(n).type = '12';
+        elseif eSpace(thisEpoch) == 2 && eTime(thisEpoch) == 1
+            EEG(1).event(n).type = '21';
+        elseif eSpace(thisEpoch) == 2 && eTime(thisEpoch) == 2
+            EEG(1).event(n).type = '22';
+        end
+        
+        thisEpoch = thisEpoch + 1;
+        
+    end
+    
+    % Because of missing trials in the EEG recording break, identify which
+    % epoch is the first of the EDF2 file
+    eCount = length(eType) - length(epochsEDF2) + 1;
+    
+    % Insert events into EEG2
+    thisEpoch = 1;
+    numSpikes = size(EEG(2).event,2);
+    for n = numSpikes+1:numSpikes+length(epochsEDF2)
+        
+        EEG(2).event(n).latency = epochsEDF2(thisEpoch);
+        
+        if eSpace(eCount) == 1 && eTime(eCount) == 1
+            EEG(2).event(n).type = '11';
+        elseif eSpace(eCount) == 1 && eTime(eCount) == 2
+            EEG(2).event(n).type = '12';
+        elseif eSpace(eCount) == 2 && eTime(eCount) == 1
+            EEG(2).event(n).type = '21';
+        elseif eSpace(eCount) == 2 && eTime(eCount) == 2
+            EEG(2).event(n).type = '22';
+        end
+        
+        eCount = eCount + 1;
+        thisEpoch = thisEpoch + 1;
+    end
+    
+    % Create epochs
+    [EEG(1)] = pop_epoch(EEG(1),{},[eStart eEnd]);
+    [EEG(2)] = pop_epoch(EEG(2),{},[eStart eEnd]);
+    
+    EEG(3) = pop_mergeset(EEG(1), EEG(2));
+    
+    % Save epoched data
+    pop_saveset(EEG(3), ['Epoched Data/' subject_id '_' teleporter '_epoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
     
 end
