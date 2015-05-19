@@ -106,6 +106,6 @@ prompt = 'Select channels showing prominent spiking activity.';
 spikingChanNames = {EEG.chanlocs([spikingChans]).labels};
 
 % Save current state of EEG
-save([subject_dir 'PreProcessing Intermediates/' save_stems{thisEDF} '_badChansRemoved.mat'],'EEG','markerChanName','badChanNames','markerChanNumber','badChans','spikingChans','spikingChanNames');
+save([subject_dir 'PreProcessing Intermediates/' save_stems{thisEDF} '_badChansRemoved.mat'],'EEG','markerChanName','badChanNames','markerChanNumber','badChans','spikingChans','spikingChanNames','-v7.3');
 
 end
