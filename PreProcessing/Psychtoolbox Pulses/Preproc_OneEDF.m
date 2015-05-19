@@ -6,15 +6,15 @@ clear all; close all; clc;
 %% Set up paths
 subject_dir = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/';
 subject_id  = 'UCDMC14';
-teleporter  = 'TeleporterA';
-edf_file    = 'UCDMC14_020415_teleporter.edf'; % in 'Raw Data' folder
+teleporter  = 'TeleporterB';
+edf_file    = 'UCDMC14_020715.edf'; % in 'Raw Data' folder
 
 % Psychtoolbox data
-pre_test_pulses  = [subject_dir 'Raw Data/UCDMC14_020415_pre/SubjectUCDMC14_Data.mat'];
-post_test_pulses = [subject_dir 'Raw Data/UCDMC14_020415_post/SubjectUCDMC14_part2_Data_interim.mat'];
+pre_test_pulses  = [subject_dir 'Raw Data/UCDMC14_020715_pre_eyemoves/SubjectUCDMC14_eyemoves_Data_interim.mat'];
+post_test_pulses = [subject_dir 'Raw Data/UCDMC14_020715_post/SubjectUCDMC14_2715_post_Data_interim.mat'];
 
 % Unity data
-unityFindStorePath = [subject_dir 'Behavioral Data/' teleporter '/s2_patientTeleporterData.txt'];
+unityFindStorePath = [subject_dir 'Behavioral Data/' teleporter '/s2_patientTeleporterData 2.txt'];
 
 % Epoch start/end times in seconds
 eStart = -3;
@@ -607,7 +607,7 @@ for thisDepth = 1:length(depthNames)
     % Insert events into EEG
     thisEpoch = 1;
     numSpikes = size(EEG.event,2);
-    for n = numSpikes+1:numSpikes+length(epochsEDF)
+    for n = numSpikes+1:numSpikes+length(epochs)
         
         EEG.event(n).latency = epochsEDF(thisEpoch);
         
@@ -645,7 +645,7 @@ for thisDepth = 1:length(depthNames)
     % Insert events into EEG
     thisEpoch = 1;
     numSpikes = size(EEG.event,2);
-    for n = numSpikes+1:numSpikes+length(epochsEDF)
+    for n = numSpikes+1:numSpikes+length(epochs)
         
         EEG.event(n).latency = epochsEDF(thisEpoch);
         
