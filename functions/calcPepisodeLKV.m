@@ -39,9 +39,6 @@ end
 % wavelet width
 width = 6;
 
-% initialize eeglab
-eeglab;
-
 % Loop over channels
 for thisChan = 1:length(chanNames)
     
