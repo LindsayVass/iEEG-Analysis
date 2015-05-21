@@ -4,17 +4,17 @@
 clear all; close all; clc;
 
 %% Set up paths
-subject_dir = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/';
-subject_id  = 'UCDMC14';
+subjectDir = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/';
+subjectID  = 'UCDMC14';
 teleporter  = 'TeleporterB';
-edf_file    = 'UCDMC14_020715.edf'; % in 'Raw Data' folder
+edfFile    = 'UCDMC14_020715.edf'; % in 'Raw Data' folder
 
 % Psychtoolbox data
-pre_test_pulses  = [subject_dir 'Raw Data/UCDMC14_020715_pre_eyemoves/SubjectUCDMC14_eyemoves_Data_interim.mat'];
-post_test_pulses = [subject_dir 'Raw Data/UCDMC14_020715_post/SubjectUCDMC14_2715_post_Data_interim.mat'];
+preTestPulses  = [subjectDir 'Raw Data/UCDMC14_020715_pre_eyemoves/SubjectUCDMC14_eyemoves_Data_interim.mat'];
+postTestPulses = [subjectDir 'Raw Data/UCDMC14_020715_post/SubjectUCDMC14_2715_post_Data_interim.mat'];
 
 % Unity data
-unityFindStorePath = [subject_dir 'Behavioral Data/' teleporter '/s2_patientTeleporterData 2.txt'];
+unityFindStorePath = [subjectDir 'Behavioral Data/' teleporter '/s2_patientTeleporterData 2.txt'];
 
 % Epoch start/end times in seconds
 eStart = -3;
@@ -30,42 +30,42 @@ depthNames = {'LAD','LHD','RAD','RHD'};
 labelsToRemove_noSpikes = {'spike','complex','other'};
 labelsToRemove_noWaves = {'sharpWave'};
 
-%%
+%% Set up filenames and paths
 
-save_stem = [subject_id '_' teleporter];
+save_stem = [subjectID '_' teleporter];
 
-addpath(genpath(subject_dir))
+addpath(genpath(subjectDir))
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/iEEG/Amber Scripts/'))
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/eeglab13_4_4b/'))
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/functions/'))
 
 % Make directories to put our data into
-cd(subject_dir);
-if ~exist([subject_dir 'PreProcessing Intermediates'],'dir')
+cd(subjectDir);
+if ~exist([subjectDir 'PreProcessing Intermediates'],'dir')
     system('mkdir PreProcessing\ Intermediates');
 end
 
-if ~exist([subject_dir 'Epoched Data'],'dir')
+if ~exist([subjectDir 'Epoched Data'],'dir')
     system('mkdir Epoched\ Data');
 end
 
-if ~exist([subject_dir 'Mat Files'],'dir')
+if ~exist([subjectDir 'Mat Files'],'dir')
     system('mkdir Mat\ Files');
 end
 
-if ~exist([subject_dir 'Figures'],'dir')
+if ~exist([subjectDir 'Figures'],'dir')
     system('mkdir Figures');
 end
 
 %% Load psychtoolbox data
-load(pre_test_pulses);
+load(preTestPulses);
 pretest_master_event_list = master_event_list;
 
-load(post_test_pulses);
+load(postTestPulses);
 posttest_master_event_list = master_event_list;
 
 %% Load patient LFP data in .edf format and put into EEG struct
-cd ([subject_dir])
+cd ([subjectDir])
 
 % Check if we've already done this stage of pre-processing
 if exist(['PreProcessing Intermediates/' save_stem '_badChansRemoved.mat'],'file')
@@ -88,7 +88,7 @@ else
 end
 
 if redoBadChans == 1
-    PutIntoEEG(subject_dir, subject_id, {edf_file}, 1, {save_stem});
+    PutIntoEEG(subjectDir, subjectID, {edfFile}, 1, {save_stem});
 end
 
 
@@ -172,7 +172,7 @@ end
 
 
 %% Calculate pulse timing synchronization
-if exist([subject_dir 'Mat Files/' save_stem  '_time_sync.mat'],'file')
+if exist([subjectDir 'Mat Files/' save_stem  '_time_sync.mat'],'file')
     % Ask user whether to use the old pulse timing file or re-calculate a
     % new one
     question = 'You already have pulse time synchronization for this dataset. What would you like to do?';
@@ -237,12 +237,12 @@ if redoPulses == 1
     
     % Save regression values for later
     time_sync_regression = all_P;
-    save([subject_dir 'Mat Files/' save_stem  '_time_sync.mat'],'time_sync_regression');
+    save([subjectDir 'Mat Files/' save_stem  '_time_sync.mat'],'time_sync_regression');
 end
 
 %% Find epochs of interest in the behavioral file
 
-if exist([subject_dir 'Mat Files/' subject_id '_' teleporter '_Epochs_Entry.mat'],'file')
+if exist([subjectDir 'Mat Files/' subjectID '_' teleporter '_Epochs_Entry.mat'],'file')
     % Ask user whether to use the old epoch timings or re-calculate new
     % ones
     question = 'You already have found the epoch timings for this dataset. What would you like to do?';
@@ -265,7 +265,7 @@ if redoFindEpochs == 1
     
     % Load in the time sync regression if it's not in the workspace
     if ~exist('time_sync_regression','var')
-        load([subject_dir 'Mat Files/' save_stem  '_time_sync.mat'])
+        load([subjectDir 'Mat Files/' save_stem  '_time_sync.mat'])
     end
     
     % Load in the unity output
@@ -429,7 +429,7 @@ if redoFindEpochs == 1
     end
     
     % Save the results
-    save([subject_dir 'Mat Files/' subject_id '_' teleporter '_Epochs_Entry.mat'],'epochsEDF','eSpace','eTime','eType');
+    save([subjectDir 'Mat Files/' subjectID '_' teleporter '_Epochs_Entry.mat'],'epochsEDF','eSpace','eTime','eType');
     
 end
 
@@ -570,39 +570,17 @@ for thisType = 1:length(depthNames)
         
         % Save the marked dataset
         pop_saveset(EEG, ['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisType} '_marked.set']);
-        
-        % Save version with spikes removed
-        indexes = marks_label2index(EEG.marks.time_info, labelsToRemove_noSpikes, 'indexes','exact','on');
-        
-        if isempty(indexes)
-            warning('No spikes found. Saving the data as it is.')
-            EEG = pop_saveset(EEG, ['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisType} '_noSpikes.set']);
-        else
-            
-            [EEG,~]=pop_marks_select_data(EEG,'time marks',indexes);
-            EEG = pop_saveset(EEG, ['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisType} '_noSpikes.set']);
-        end
-        
-        % Save version with spikes and waves removed
-        indexes = marks_label2index(EEG.marks.time_info, labelsToRemove_noWaves, 'indexes', 'exact', 'on');
-        
-        if isempty(indexes)
-            warning('No sharp waves found. Saving the data as it is.')
-            EEG = pop_saveset(EEG, ['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisType} '_noSpikes_noWaves.set']);
-        else
-            [EEG,~] = pop_marks_select_data(EEG, 'time marks', indexes);
-            EEG = pop_saveset(EEG, ['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisType} '_noSpikes_noWaves.set']);
-        end
+
     end
 end
 
-%% Epoch the 'noSpikes' EEG data
-load([subject_dir 'Mat Files/' subject_id '_' teleporter '_Epochs_Entry.mat']);
+%% Epoch the EEG data
+load([subjectDir 'Mat Files/' subjectID '_' teleporter '_Epochs_Entry.mat']);
 for thisDepth = 1:length(depthNames)
     
     % load the EEG data
     clear EEG;
-    EEG = pop_loadset(['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisDepth} '_noSpikes.set']);
+    EEG = pop_loadset(['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisDepth} '_marked.set']);
     
     % Insert events into EEG
     thisEpoch = 1;
@@ -625,52 +603,45 @@ for thisDepth = 1:length(depthNames)
         
     end
     
-    % Create epochs
-    [EEG] = pop_epoch(EEG,{},[eStart eEnd]);
+    % Save cleaned unepoched data
+    % Save unepoched data with spikes removed
+    indexes = marks_label2index(EEG.marks.time_info, labelsToRemove_noSpikes, 'indexes','exact','on');
     
-    % Save epoched data
-    pop_saveset(EEG, ['Epoched Data/' subject_id '_' teleporter '_epoched_' depthNames{thisDepth} '_noSpikes.set']);
-    
-end
-
-
-%% Epoch the 'noSpikes_noWaves' EEG
-load([subject_dir 'Mat Files/' subject_id '_' teleporter '_Epochs_Entry.mat']);
-for thisDepth = 1:length(depthNames)
-    
-    % load the EEG data
-    clear EEG;
-    EEG = pop_loadset(['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
-    
-    % Insert events into EEG
-    thisEpoch = 1;
-    numSpikes = size(EEG.event,2);
-    for n = numSpikes+1:numSpikes+length(epochs)
+    if isempty(indexes)
+        warning('No spikes found. Saving the data as it is.')
+        noSpikeEEG = pop_saveset(EEG, ['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisDepth} '_noSpikes.set']);
+    else
         
-        EEG.event(n).latency = epochsEDF(thisEpoch);
-        
-        if eSpace(thisEpoch) == 1 && eTime(thisEpoch) == 1
-            EEG.event(n).type = '11';
-        elseif eSpace(thisEpoch) == 1 && eTime(thisEpoch) == 2
-            EEG.event(n).type = '12';
-        elseif eSpace(thisEpoch) == 2 && eTime(thisEpoch) == 1
-            EEG.event(n).type = '21';
-        elseif eSpace(thisEpoch) == 2 && eTime(thisEpoch) == 2
-            EEG.event(n).type = '22';
-        end
-        
-        thisEpoch = thisEpoch + 1;
-        
+        [noSpikeEEG,~] = pop_marks_select_data(EEG,'time marks',indexes);
+        noSpikeEEG = pop_saveset(noSpikeEEG, ['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisDepth} '_noSpikes.set']);
     end
     
-    % Create epochs
-    [EEG] = pop_epoch(EEG,{},[eStart eEnd]);
+    % Save version with spikes and waves removed
+    indexes = marks_label2index(noSpikeEEG.marks.time_info, labelsToRemove_noWaves, 'indexes', 'exact', 'on');
+    
+    if isempty(indexes)
+        warning('No sharp waves found. Saving the data as it is.')
+        noWaveEEG = pop_saveset(noSpikeEEG, ['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
+    else
+        [noWaveEEG,~] = pop_marks_select_data(noSpikeEEG, 'time marks', indexes);
+        noWaveEEG = pop_saveset(noWaveEEG, ['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
+    end
+    
+    %% Save cleaned epoched data with spikes removed
+    [newEEG, goodEpochs] = pop_epoch(noSpikeEEG,{'11' '12' '21' '22'},[eStart eEnd]);
     
     % Save epoched data
-    pop_saveset(EEG, ['Epoched Data/' subject_id '_' teleporter '_epoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
+    pop_saveset(newEEG, ['Epoched Data/' subjectID '_' teleporter '_epoched_' depthNames{thisDepth} '_noSpikes.set']);
     
+    % Save list of good epochs for this electrode
+    save(['Mat Files/' subjectID '_' teleporter '_' depthNames{thisDepth} '_noSpikes_goodEpochs.mat'],'goodEpochs');
+    
+    %% Save cleaned epoched data with spikes AND waves removed
+    [newEEG, goodEpochs] = pop_epoch(noWaveEEG,{'11' '12' '21' '22'},[eStart eEnd]);
+     
+    % Save epoched data
+    pop_saveset(newEEG, ['Epoched Data/' subjectID '_' teleporter '_epoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
+    
+    % Save list of good epochs for this electrode
+    save(['Mat Files/' subjectID '_' teleporter '_' depthNames{thisDepth} '_noSpikes_noWaves_goodEpochs.mat'],'goodEpochs');
 end
-
-
-
-
