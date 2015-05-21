@@ -953,7 +953,7 @@ for thisDepth = 1:length(depthNames)
     end
     
     
-    %% Save cleaned unepoched data
+    % Save cleaned unepoched data
     for thisEDF = 1:length(save_stems)
         
         % Save unepoched data with spikes removed
@@ -981,7 +981,7 @@ for thisDepth = 1:length(depthNames)
         
     end
     
-    %% Save cleaned epoched data with spikes removed
+    % Save cleaned epoched data with spikes removed
     [newEEG(1), goodEpochs1] = pop_epoch(noSpikeEEG(1),{'11' '12' '21' '22'},[eStart eEnd]);
     [newEEG(2), goodEpochs2] = pop_epoch(noSpikeEEG(2),{'11' '12' '21' '22'},[eStart eEnd]);
     
@@ -997,24 +997,73 @@ for thisDepth = 1:length(depthNames)
     pop_saveset(newEEG(3), ['Epoched Data/' subject_id '_' teleporter '_epoched_' depthNames{thisDepth} '_noSpikes.set']);
     
     % Save list of good epochs for this electrode
-    save(['Mat Files/' subject_id '_' teleporter '_' depthNames{thisDepth} '_noSpikes_goodEpochs.mat'],'goodEpochs');
+    save(['Mat Files/' subject_id '_' teleporter '_' depthNames{thisDepth} '_goodEpochs.mat'],'goodEpochs');
     
-    %% Save cleaned epoched data with spikes AND waves removed
-    [newEEG(1), goodEpochs1] = pop_epoch(noWaveEEG(1),{'11' '12' '21' '22'},[eStart eEnd]);
-    [newEEG(2), goodEpochs2] = pop_epoch(noWaveEEG(2),{'11' '12' '21' '22'},[eStart eEnd]);
+end
+
+
+%% Epoch the 'noSpikes_noWaves' EEG
+load([subject_dir 'Mat Files/' subject_id '_' teleporter '_Epochs_Entry.mat']);
+for thisDepth = 1:length(depthNames)
     
-    % Merge the two EEG files
-    newEEG(3) = pop_mergeset(newEEG(1), newEEG(2));
+    % load the two EEG datasets
+    clear EEG;
+    EEG(1) = pop_loadset(['PreProcessing Intermediates/' save_stems{1} '_unepoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
+    EEG(2) = pop_loadset(['PreProcessing Intermediates/' save_stems{2} '_unepoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
     
-    % Make a combined list of the epochs we kept
-    epochOffset = length(eType) - length(epochsEDF2); % update goodEpochs2 indices so they match the true epoch number
-    goodEpochs2 = goodEpochs2 + epochOffset;
-    goodEpochs = cat(1, goodEpochs1, goodEpochs2);
+    % Insert events into EEG
+    thisEpoch = 1;
+    numSpikes = size(EEG(1).event,2);
+    for n = numSpikes+1:numSpikes+length(epochsEDF1)
+        
+        EEG(1).event(n).latency = epochsEDF1(thisEpoch);
+        
+        if eSpace(thisEpoch) == 1 && eTime(thisEpoch) == 1
+            EEG(1).event(n).type = '11';
+        elseif eSpace(thisEpoch) == 1 && eTime(thisEpoch) == 2
+            EEG(1).event(n).type = '12';
+        elseif eSpace(thisEpoch) == 2 && eTime(thisEpoch) == 1
+            EEG(1).event(n).type = '21';
+        elseif eSpace(thisEpoch) == 2 && eTime(thisEpoch) == 2
+            EEG(1).event(n).type = '22';
+        end
+        
+        thisEpoch = thisEpoch + 1;
+        
+    end
+    
+    % Because of missing trials in the EEG recording break, identify which
+    % epoch is the first of the EDF2 file
+    eCount = length(eType) - length(epochsEDF2) + 1;
+    
+    % Insert events into EEG2
+    thisEpoch = 1;
+    numSpikes = size(EEG(2).event,2);
+    for n = numSpikes+1:numSpikes+length(epochsEDF2)
+        
+        EEG(2).event(n).latency = epochsEDF2(thisEpoch);
+        
+        if eSpace(eCount) == 1 && eTime(eCount) == 1
+            EEG(2).event(n).type = '11';
+        elseif eSpace(eCount) == 1 && eTime(eCount) == 2
+            EEG(2).event(n).type = '12';
+        elseif eSpace(eCount) == 2 && eTime(eCount) == 1
+            EEG(2).event(n).type = '21';
+        elseif eSpace(eCount) == 2 && eTime(eCount) == 2
+            EEG(2).event(n).type = '22';
+        end
+        
+        eCount = eCount + 1;
+        thisEpoch = thisEpoch + 1;
+    end
+    
+    % Create epochs
+    [EEG(1)] = pop_epoch(EEG(1),{},[eStart eEnd]);
+    [EEG(2)] = pop_epoch(EEG(2),{},[eStart eEnd]);
+    
+    EEG(3) = pop_mergeset(EEG(1), EEG(2));
     
     % Save epoched data
-    pop_saveset(newEEG(3), ['Epoched Data/' subject_id '_' teleporter '_epoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
-    
-    % Save list of good epochs for this electrode
-    save(['Mat Files/' subject_id '_' teleporter '_' depthNames{thisDepth} '_noSpikes_noWaves_goodEpochs.mat'],'goodEpochs');
+    pop_saveset(EEG(3), ['Epoched Data/' subject_id '_' teleporter '_epoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
     
 end
