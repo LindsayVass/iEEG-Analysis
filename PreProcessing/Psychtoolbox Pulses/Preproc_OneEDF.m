@@ -585,7 +585,7 @@ for thisDepth = 1:length(depthNames)
     % Insert events into EEG
     thisEpoch = 1;
     numSpikes = size(EEG.event,2);
-    for n = numSpikes+1:numSpikes+length(epochs)
+    for n = numSpikes+1:numSpikes+length(epochsEDF)
         
         EEG.event(n).latency = epochsEDF(thisEpoch);
         
