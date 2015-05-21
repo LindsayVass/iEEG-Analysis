@@ -25,23 +25,28 @@ subjectID  = 'UCDMC15';
 subjectDir = ['/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/' subjectID '/'];
 teleporter = 'TeleporterA';
 
-% Specify the .mat file that contains the onset and type of each epoch
-epochsFile = [subjectDir 'Mat Files/' subjectID '_' teleporter '_Epochs_Entry.mat']; 
+% Specify file naming conventions for data. There are
+% separate EEG files for each depth electrode, so we will specify every
+% part of the path except the depth electrode name. Then, we will later
+% combine these as [prefix depthName suffix]. We will use a cell array to
+% allow for multiple prefixes or suffixes (e.g., different prefixes for
+% EDF1 and EDF2)
+cleanedUnepochedPrefix = {[subjectDir 'PreProcessing Intermediates/' subjectID '_' teleporter '_EDF1_unepoched_'], ...
+                          [subjectDir 'PreProcessing Intermediates/' subjectID '_' teleporter '_EDF2_unepoched_']};
+cleanedUnepochedSuffix = {'_noSpikes_noWaves.set'};
 
-% Pulse timing info
-pulseType  = 'unity'; % set to either 'unity' or 'PTB'
-pulseFiles = {[subjectDir 'Mat Files/' subjectID '_' teleporter '_EDF1_pulse_timing.mat'], ...
-              [subjectDir 'Mat Files/' subjectID '_' teleporter '_EDF2_pulse_timing.mat']};
-          
+% Do the same for the epoched cleaned data
+% cleanedEpochedPrefix   = {[subjectDir 'Epoched Data/' subjectID '_' teleporter '_epoched_']};
+% cleanedEpochedSuffix   = {'_noSpikes_noWaves.set'};
+
 % Specify path to save the pepisode calculations to
-saveStem = [subjectDir 'Mat Files/Pepisode/' subjectID '_' teleporter '_pepisode'];
+saveStem = [subjectDir 'Mat Files/Pepisode/' subjectID '_' teleporter '_pepisode_'];
+
+% Specify path to save the cell array of pepisode values to
+saveFile = [subjectDir 'Mat Files/Pepisode/Summary/' subjectID '_' teleporter '_pepisode_summary_noSpikes_noWaves.set'];
 
 % channel names to use
-chanList = {'RAD3' 'RAD4' 'RAD5' 'RAD6' 'RHD1' 'RHD2' 'RHD3' 'RHD4' 'LAD3' 'LAD4' 'LAD5' 'LHD1' 'LHD2' 'LHD3'};
-
-% trial type names and corresponding eType
-trialTypeList = {'NSNT' 'NSFT' 'FSNT' 'FSFT'};
-trialeTypeList = [1:1:4];
+chanList  = {'RAD3' 'RAD4' 'RAD5' 'RAD6' 'RHD1' 'RHD2' 'RHD3' 'RHD4' 'LAD3' 'LAD4' 'LAD5' 'LHD1' 'LHD2' 'LHD3'};
 
 % thresholds for pepisode 
 durationThresh  = 3; % # of cycles
@@ -51,7 +56,8 @@ amplitudeThresh = 95; % percent of distribution
 % calculated, set this to 1
 skipCompute = 0;
 
-% time periods of interest
+% time periods of interest in ms relative to teleporter entry
+timePointNames = {'Pre' 'Tele' 'Post'};
 preTele = [-1000 0];
 teleNT  = [1 1830];
 teleFT  = [1 2830];
@@ -59,26 +65,9 @@ postNT  = [1831 2830];
 postFT  = [2831 3830];
 
 % frequencies to use
-F = logspace(log(1)/log(10),log(181)/log(10),31); % 31 log-spaced frequencies, as in Watrous 2011
+frequencies = logspace(log(1)/log(10),log(181)/log(10),31); % 31 log-spaced frequencies, as in Watrous 2011
 
-
-% unepochedEEG1 = [subject_dir 'Raw Data/UCDMC15_TeleporterA_EDF1_unepoched.set']; % use the most pre-processed, but unepoched dataset
-% unepochedEEG2 = [subject_dir 'Raw Data/UCDMC15_TeleporterA_EDF2_unepoched.set']; % leave blank if only 1 EDF
-% unityFile     = [subject_dir 'Behavioral Data/TeleporterA/s3_FindStore_TeleporterA_FIXED.txt']; % Unity output during navigation to find stores
-% save_stem     = [subject_dir 'Mat Files/UCDMC15_TeleporterA_pepisode'];
-
-% select pulse timing file
-% PTB_pulse_file = []; % time synchronization file for pulses from psychtoolbox
-% unity_EDF1_pulse_file = [subject_dir 'Raw Data/UCDMC15_TeleporterA_EDF1_pulse_timing.mat']; % ticks/bins for pulses from unity
-% unity_EDF2_pulse_file = [subject_dir 'Raw Data/UCDMC15_TeleporterA_EDF2_pulse_timing.mat']; % leave blank if only 1 EDF
-
-
-% frequencies for a bandpass filter, to filter out the 60 Hz line noise
-% filtFreq = [59.9 60.9];
-
-
-
-%% set path
+%% set paths and filenames
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/eeglab13_3_2b'));
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/PepisodeCode/'));
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/functions/'));
@@ -86,126 +75,172 @@ addpath(genpath('/Users/Lindsay/Documents/MATLAB/arne_code/'));
 
 % Make the output directory if it doesn't already exist
 if ~exist([subjectDir 'Mat Files/Pepisode/'], 'dir')
-    system(['mkdir ' subjectDir 'Mat Files/Pepisode/']);
+    system(['mkdir ' subjectDir 'Mat\ Files/Pepisode/']);
 end
+
+if ~exist([subjectDir 'Mat Files/Pepisode/Summary/'], 'dir')
+    system(['mkdir ' subjectDir 'Mat\ Files/Pepisode/Summary/']);
+end
+
+% Get depth names from chanList
+depthNames = unique(cellfun(@(s) s(1:3), chanList, 'UniformOutput', false));
 
 eeglab;
 
-%% load EEG data
-% [EEG1] = pop_loadset(unepochedEEG1);
-% 
-% % find the indices of the channels of interest
-% chans1 = [];
-% for thisChan = 1:size(EEG1.data,1)
-%     thisChanName = {EEG1.chanlocs(thisChan).labels};
-%     goodChanInd = strcmpi(thisChanName,chanList);
-%     if sum(goodChanInd(:)) > 0
-%         chans1(end+1) = thisChan;
-%     end
-% end
-% 
-% if ~isempty(unepochedEEG2)
-%     [EEG2] = pop_loadset(unepochedEEG2);
-%     
-%     % find the indices of the channels of interest
-%     chans2 = [];
-%     for thisChan = 1:size(EEG2.data,1)
-%         thisChanName = {EEG2.chanlocs(thisChan).labels};
-%         goodChanInd = strcmpi(thisChanName,chanList);
-%         if sum(goodChanInd(:)) > 0
-%             chans2(end+1) = thisChan;
-%         end
-%     end
-% end
 
+%% Calculate power distributions for pepisode
 
-%% load unity file and identify start and end times of navigation
-fid  = fopen(unityFile);
-% txtdata = textscan(fid,'%d%f%f%s%s%s%s%f%f%f','delimiter',',','Headerlines',1,'EndOfLine','\r\n'); % use this version for unity output that we fixed in Matlab
-txtdata =  textscan(fid,'%d%f%f%s%s%s%s%f%f%f','delimiter',',','Headerlines',1); % use this version for raw unity output
-fclose(fid);
- 
-systemTime = txtdata{3};
-startTicks = systemTime(1);
-endTicks   = systemTime(end);
-
-% make sure there's only one kind of pulse file
-if ~isempty(PTB_pulse_file) && ~isempty(unity_EDF1_pulse_file)
-    errorMsg = 'Error! You can only have one kind of pulse file. Get rid of either "PTB_pulse_file" or "unity_EDF1_pulse_file".';
-    error(errorMsg);
-end
-
-% PTB pulses
-if ~isempty(PTB_pulse_file)
-    load(PTB_pulse_file);
-    startBin = round(startTicks * time_sync_regression(1) + time_sync_regression(2));
-    endBin   = round(endTicks * time_sync_regression(1) + time_sync_regression(2));
-    
-    % trim EEG data based on start and end times
-    data1 = EEG1.data(chans1, startBin:endBin);
-end
-
-% unity pulses
-bothTicks = cat(1,startTicks,endTicks);
-if ~isempty(unity_EDF1_pulse_file)
-    
-    if ~isempty(unity_EDF2_pulse_file) % if 2 EDFs
-        [~,EEG1bins,EEG2bins] = unityPulseTiming(bothTicks,unity_EDF1_pulse_file,unity_EDF2_pulse_file);
-        
-        if ~isempty(EEG1bins) && ~isempty(EEG2bins) % if start in EDF1 and end in EDF2
-            startBin = EEG1bins(1);
-            endBin   = EEG2bins(1);
-            
-            % trim EEG data
-            data1 = EEG1.data(chans1, startBin:end);
-            data2 = EEG2.data(chans2, 1:endBin);
-            
-        elseif ~isempty(EEG1bins) && isempty(EEG2bins) % if both in EDF1
-            startBin = EEG1bins(1);
-            endBin   = EEG1bins(2);
-            
-            % trim EEG data
-            data1 = EEG1.data(chans1, startBin:endBin);
-            
-        elseif isempty(EEG1bins) && ~isempty(EEG2bins) % if both in EDF2
-            startBin = EEG2bins(1);
-            endBin   = EEG2bins(2);
-            
-            % trim EEG data
-            data1 = EEG2.data(chans2, startBin:endBin);
-        end
-        
-    else % if 1 EDF
-        [~,EEG1bins,~] = unityPulseTiming(bothTicks,unity_EDF1_pulse_file);
-        startBin = EEG1bins(1);
-        endBin   = EEG1bins(2);
-    end
-
-end
-
-
-%% Calculate pepisode for entire navigation period (not including free exploration)
-
-%%%%%%%%%%%%%%%%%%%%%%%%% STEP 1 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% compute pepisode for the whole EEG file (this will return a
-% vector with a 0 for every point in time without a sustained
-% oscillation at that frequency, and a 1 for every point in time
-% during which there is a sustained oscillation)
+% In this first step, we will use the cleaned, unepoched EEG files to
+% establish a distribution of power values at each frequency of interest.
+% This section will return a binary vector  that contains a 0 for each
+% point in time without a sustained oscillation at that frequency and a 1
+% for each point in time that exceeds both the duration and amplitude
+% thresholds (i.e., is a sustained oscillation)
 
 if ~skipCompute
-    for thisChan = 1:size(data1,1)
-        fprintf(['computing Pepisode for channel ' num2str(thisChan) ' of ' num2str(size(data1,1)) '\n']);
-        eegdata = squeeze(data1(thisChan,:));
-        outFile = strcat(save_stem,'_',EEG1.chanlocs(chans1(thisChan)).labels,'.mat');
+    
+    for thisDepth = 1:length(depthNames)
         
-        if exist('data2', 'var')
-            eegdata2 = squeeze(data2(thisChan,:));
-            calcPepisodeTwoEEG(eegdata,eegdata2,EEG1.srate,outFile,filtFreq,F,durationThresh,amplitudeThresh);
-        else
-            calcPepisode(eegdata,EEG1.srate,outFile,filtFreq,F,durationThresh,amplitudeThresh);
-        end
-    end
+        % Find the channels on this depth electrode
+        chanDepth = char(chanList);
+        chanDepth = chanDepth(:, 1:3); % keep the first 3 characters, removing the electrode #
+        chanDepth = cellstr(chanDepth);
+        chanInd   = strcmpi(depthNames{thisDepth}, chanDepth);
+        chanNames = chanList(chanInd);
+        
+        % Set up eeg list for this channel
+        numEDFs = size(cleanedUnepochedPrefix,2);
+        eegList = {};
+        for thisEDF = 1:numEDFs
+            pathName = [cleanedUnepochedPrefix{thisEDF} depthNames{thisDepth} cleanedUnepochedSuffix{1}];
+            eegList{thisEDF} = pathName;
+            
+        end % thisEDF
+        
+        % Calculate pepisode
+        calcPepisodeLKV(eegList, chanNames, saveStem, frequencies, durationThresh, amplitudeThresh);
+        
+        
+    end % thisDepth
+    
 end
+
+%% Extract pepisode values for our epochs of interest
+
+% Initialize the cell array to hold all of our pepisode values
+pepisodeSummary      = cell(1,11);
+pepisodeSummary(1,:) = {'SubjectID','Teleporter','EDF','Electrode','TrialNumber','TrialSpaceType','TrialTimeType','TrialType','TimePoint','Frequency','Pepisode'};
+thisRow = 2;
+
+for thisDepth = 1:length(depthNames)
+    
+    % Find the channels on this depth electrode
+    chanDepth = char(chanList);
+    chanDepth = chanDepth(:, 1:3); % keep the first 3 characters, removing the electrode #
+    chanDepth = cellstr(chanDepth);
+    chanInd   = strcmpi(depthNames{thisDepth}, chanDepth);
+    chanNames = chanList(chanInd);
+    
+    % Loop through EEG files
+    for thisEDF = 1:numEDFs
+        
+        % Load cleaned unepoched data
+        EEG = pop_loadset([cleanedUnepochedPrefix{thisEDF} depthNames{thisDepth} cleanedUnepochedSuffix{1}]);
+        
+        % Extract the trial events from the event list (i.e., remove boundary
+        % events)
+        boundaryInds = strcmpi('boundary', {EEG.event.type});
+        trialList    = EEG.event(boundaryInds == 0); % select events that are NOT boundaries
+        
+        % Loop through channels on this depth electrode
+        for thisChan = 1:length(chanNames)
+            
+            % Path to the binary vector we calculated in the previous step
+            binaryVectorFile = [saveStem chanNames{thisChan} '.mat'];
+            
+            % Loop through trials
+            for thisTrial = 1:size(trialList, 2)
+                
+                % Extract the trial type for this trial
+                thisLabel = trialList(thisTrial).type;
+                
+                % Determine whether it's NS or FS
+                if strcmpi('1', thisLabel(1)) == 1
+                    thisSpaceType = 'NS';
+                elseif strcmpi('2', thisLabel(1)) == 1
+                    thisSpaceType = 'FS';
+                else
+                    error('Unknown trial type')
+                end
+                
+                % Determine whether it's NT or FT
+                if strcmpi('1', thisLabel(2)) == 1
+                    thisTimeType = 'NT';
+                elseif strcmpi('2', thisLabel(2)) == 1
+                    thisTimeType = 'FT';
+                else
+                    error('Unknown trial type')
+                end
+                
+                % Combine them together to make the spatiotemporal type
+                thisType = [thisSpaceType thisTimeType];
+                
+                % Loop through time points
+                for thisTimePoint = 1:length(timePointNames)
+                    
+                    % Obtain the binary vector for the timepoint of
+                    % interest
+                    switch thisTimePoint
+                        case 1 % Pre-teleportation
+                            
+                            binarySelection = getPepisodeLKV(binaryVectorFile, thisEDF, trialList(thisTrial).latency, preTele(2) - preTele(1), preTele(1), frequencies);
+                        
+                        case 2 % Teleportation
+                            
+                            if strcmpi('NT', thisTimeType) == 1
+                                binarySelection = getPepisodeLKV(binaryVectorFile, thisEDF, trialList(thisTrial).latency, teleNT(2) - teleNT(1), teleNT(1), frequencies);
+                            else
+                                binarySelection = getPepisodeLKV(binaryVectorFile, thisEDF, trialList(thisTrial).latency, teleFT(2) - teleFT(1), teleFT(1), frequencies);
+                            end
+                            
+                        case 3 % Post-teleportation
+                            
+                            if strcmpi('NT', thisTimeType) == 1
+                                binarySelection = getPepisodeLKV(binaryVectorFile, thisEDF, trialList(thisTrial).latency, postNT(2) - postNT(1), postNT(1), frequencies);
+                            else
+                                binarySelection = getPepisodeLKV(binaryVectorFile, thisEDF, trialList(thisTrial).latency, postFT(2) - postFT(1), postFT(1), frequencies);
+                            end
+                    end % switch thisTimePoint
+                    
+                    % Take the mean across time
+                    meanPepisode = mean(binarySelection,3);
+                    
+                    % Add the values to the summary cell array
+                    for thisFreq = 1:length(frequencies)
+                        
+                        pepisodeSummary(thisRow,:) = {subjectID, teleporter, thisEDF, chanNames{thisChan}, thisTrial, thisSpaceType, thisTimeType, thisType, timePointNames{thisTimePoint}, 
+                        
+                    end % thisFreq
+                    
+                end % thisTimePoint
+                 
+            end % thisTrial
+            
+        end % thisChan
+        
+    end % thisEDF
+    
+    
+end % thisDepth
+
+
+
+
+
+
+
+
+
 
 %% load epochs info
 load(epochsFile);
@@ -259,7 +294,7 @@ intervalsFT = cat(1, preTele, teleFT, postFT);
 durationsFT = round((intervalsFT(:,2) - intervalsFT(:,1))*EEG1.srate/1000);
 
 % initialize summary arrays
-PRE_1_all  = nan(length(trialTypeList), size(data1,1), size(F,2));
+PRE_1_all  = nan(length(trialTypeList), size(data1,1), size(frequencies,2));
 TELE_1_all = PRE_1_all;
 POST_1_all = PRE_1_all;
 PRE_2_all  = PRE_1_all;
@@ -272,27 +307,27 @@ for thisType = 1:length(trialTypeList) % loop through trial types
     
     % if NT
     if ~isempty(strfind('NT', trialTypeList{thisType}))
-        PREunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(F,2), durationsNT(1));
-        TELEunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(F,2), durationsNT(2));
-        POSTunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(F,2), durationsNT(3));
+        PREunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(frequencies,2), durationsNT(1));
+        TELEunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(frequencies,2), durationsNT(2));
+        POSTunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(frequencies,2), durationsNT(3));
         
         if exist('onsets2', 'var')
-            PREunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsNT(1));
-            TELEunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsNT(2));
-            POSTunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsNT(3));
+            PREunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(frequencies,2), durationsNT(1));
+            TELEunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(frequencies,2), durationsNT(2));
+            POSTunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(frequencies,2), durationsNT(3));
         end
         
         intervals = intervalsNT;
     else
         % if FT
-        PREunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(F,2), durationsFT(1));
-        TELEunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(F,2), durationsFT(2));
-        POSTunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(F,2), durationsFT(3));
+        PREunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(frequencies,2), durationsFT(1));
+        TELEunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(frequencies,2), durationsFT(2));
+        POSTunionVecHolder1 = nan(size(data1,1), size(onsets1{thisType}, 2), size(frequencies,2), durationsFT(3));
         
         if exist('onsets2', 'var')
-            PREunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsFT(1));
-            TELEunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsFT(2));
-            POSTunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(F,2), durationsFT(3));
+            PREunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(frequencies,2), durationsFT(1));
+            TELEunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(frequencies,2), durationsFT(2));
+            POSTunionVecHolder2 = nan(size(data1,1), size(onsets2{thisType}, 2), size(frequencies,2), durationsFT(3));
         end
         
         intervals = intervalsFT;
@@ -303,18 +338,18 @@ for thisType = 1:length(trialTypeList) % loop through trial types
         % file containing pepisode power info for each frequency
         outFile = strcat(save_stem,'_', chanList{thisChan},'.mat');
         if exist('onsets2', 'var')
-            PREunionVecHolder1(thisChan,:,:,:)  = getpepisodeTwoEEG(outFile, 1, onsets1{thisType} - startBin, intervals(1,2) - intervals(1,1), intervals(1), F);
-            TELEunionVecHolder1(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 1, onsets1{thisType} - startBin, intervals(2,2) - intervals(2,1), intervals(2), F);
-            POSTunionVecHolder1(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 1, onsets1{thisType} - startBin, intervals(3,2) - intervals(3,1), intervals(3), F);
+            PREunionVecHolder1(thisChan,:,:,:)  = getpepisodeTwoEEG(outFile, 1, onsets1{thisType} - startBin, intervals(1,2) - intervals(1,1), intervals(1), frequencies);
+            TELEunionVecHolder1(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 1, onsets1{thisType} - startBin, intervals(2,2) - intervals(2,1), intervals(2), frequencies);
+            POSTunionVecHolder1(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 1, onsets1{thisType} - startBin, intervals(3,2) - intervals(3,1), intervals(3), frequencies);
             
-            PREunionVecHolder2(thisChan,:,:,:)  = getpepisodeTwoEEG(outFile, 2, onsets2{thisType}, intervals(1,2) - intervals(1,1), intervals(1), F);
-            TELEunionVecHolder2(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 2, onsets2{thisType}, intervals(2,2) - intervals(2,1), intervals(2), F);
-            POSTunionVecHolder2(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 2, onsets2{thisType}, intervals(3,2) - intervals(3,1), intervals(3), F);
+            PREunionVecHolder2(thisChan,:,:,:)  = getpepisodeTwoEEG(outFile, 2, onsets2{thisType}, intervals(1,2) - intervals(1,1), intervals(1), frequencies);
+            TELEunionVecHolder2(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 2, onsets2{thisType}, intervals(2,2) - intervals(2,1), intervals(2), frequencies);
+            POSTunionVecHolder2(thisChan,:,:,:) = getpepisodeTwoEEG(outFile, 2, onsets2{thisType}, intervals(3,2) - intervals(3,1), intervals(3), frequencies);
             
         else
-            PREunionVecHolder1(thisChan,:,:,:)  = getpepisode(outFile, onsets1{thisType} - startBin, intervals(1,2) - intervals(1,1), intervals(1), F);
-            TELEunionVecHolder1(thisChan,:,:,:) = getpepisode(outFile, onsets1{thisType} - startBin, intervals(2,2) - intervals(2,1), intervals(2), F);
-            POSTunionVecHolder1(thisChan,:,:,:) = getpepisode(outFile, onsets1{thisType} - startBin, intervals(3,2) - intervals(3,1), intervals(3), F);
+            PREunionVecHolder1(thisChan,:,:,:)  = getpepisode(outFile, onsets1{thisType} - startBin, intervals(1,2) - intervals(1,1), intervals(1), frequencies);
+            TELEunionVecHolder1(thisChan,:,:,:) = getpepisode(outFile, onsets1{thisType} - startBin, intervals(2,2) - intervals(2,1), intervals(2), frequencies);
+            POSTunionVecHolder1(thisChan,:,:,:) = getpepisode(outFile, onsets1{thisType} - startBin, intervals(3,2) - intervals(3,1), intervals(3), frequencies);
         end
         
     end % thisChan
@@ -437,11 +472,11 @@ PepisodeByFreq(3,:,:,:) = POST_all;
 
 
 %% get mean for each frequency band
-deltaBand = find(F >= 1 & F <= 4);
-thetaBand = find(F > 4 & F <= 8);
-alphaBand = find(F > 8 & F <= 12);
-betaBand  = find(F > 12 & F <= 30);
-gammaBand = find(F > 30);
+deltaBand = find(frequencies >= 1 & frequencies <= 4);
+thetaBand = find(frequencies > 4 & frequencies <= 8);
+alphaBand = find(frequencies > 8 & frequencies <= 12);
+betaBand  = find(frequencies > 12 & frequencies <= 30);
+gammaBand = find(frequencies > 30);
 freqNames = {'deltaBand','thetaBand','alphaBand','betaBand','gammaBand'};
 
 % initialize summary array; 3 (pre/tele/post) x Trial Type x Electrode x
