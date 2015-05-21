@@ -319,7 +319,7 @@ if(~isempty(H)) % more than one "hole"
 end % more than one "hole"
 
 if(shoulder~=0) % handle shoulder
-    if size(detected,2) < shoulder
+    if size(detected,2) <= shoulder
         % if our segment is too short, set it to zero
         detected(:) = 0;
     else
