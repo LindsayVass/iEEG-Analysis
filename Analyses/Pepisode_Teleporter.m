@@ -43,7 +43,7 @@ cleanedUnepochedSuffix = {'_noSpikes_noWaves.set'};
 saveStem = [subjectDir 'Mat Files/Pepisode/' subjectID '_' teleporter '_pepisode_'];
 
 % Specify path to save the cell array of pepisode values to
-saveFile = [subjectDir 'Mat Files/Pepisode/Summary/' subjectID '_' teleporter '_pepisode_summary_noSpikes_noWaves.set'];
+saveFile = [subjectDir 'Mat Files/Pepisode/Summary/' subjectID '_' teleporter '_pepisode_summary_noSpikes_noWaves.mat'];
 
 % channel names to use
 chanList  = {'RAD3' 'RAD4' 'RAD5' 'RAD6' 'RHD1' 'RHD2' 'RHD3' 'RHD4' 'LAD3' 'LAD4' 'LAD5' 'LHD1' 'LHD2' 'LHD3'};
