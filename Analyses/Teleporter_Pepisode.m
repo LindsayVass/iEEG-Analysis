@@ -8,12 +8,14 @@
 % threshold (95% of the power distribution) and a duration threshold (# of
 % cycles).
 %
-% In this script, we will evaluate three epochs:
-% 1. Pre-teleportation (-1000 : 0 ms)
-% 2. Teleportation (0 : 1830 ms for NT or 0 : 2830 ms for FT)
-% 3. Post-teleportation (1830 : 1930 ms for NT or 2830 : 2930 ms for FT)
+% In this script, we will evaluate seven epochs:
+%   - Pre-teleportation (-3000 : -2001 ms) (-2000 : -1001 ms) (-1000 : 0 ms)
+%   - Teleportation (0 : 1830 ms for NT or 0 : 2830 ms for FT)
+%   - Post-teleportation 
+%       - NT: (1831 : 2830 ms) (2831 : 3830 ms) (3831 : 4830 ms)
+%       - FT: (2831 : 3830 ms) (3831 : 4830 ms) (4831 : 5830 ms)
 %
-% Lindsay Vass 29 April 2014
+% Lindsay Vass 22 May 2015
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 clear all;close all;clc;
@@ -21,7 +23,7 @@ clear all;close all;clc;
 %% set parameters for analysis
 
 % Subject info
-subjectID  = 'UCDMC15';
+subjectID  = 'UCDMC13';
 subjectDir = ['/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/' subjectID '/'];
 teleporter = 'TeleporterA';
 
@@ -31,22 +33,17 @@ teleporter = 'TeleporterA';
 % combine these as [prefix depthName suffix]. We will use a cell array to
 % allow for multiple prefixes or suffixes (e.g., different prefixes for
 % EDF1 and EDF2)
-cleanedUnepochedPrefix = {[subjectDir 'PreProcessing Intermediates/' subjectID '_' teleporter '_EDF1_unepoched_'], ...
-                          [subjectDir 'PreProcessing Intermediates/' subjectID '_' teleporter '_EDF2_unepoched_']};
+cleanedUnepochedPrefix = {[subjectDir 'PreProcessing Intermediates/' subjectID '_' teleporter '_unepoched_']};
 cleanedUnepochedSuffix = {'_noSpikes_noWaves.set'};
-
-% Do the same for the epoched cleaned data
-% cleanedEpochedPrefix   = {[subjectDir 'Epoched Data/' subjectID '_' teleporter '_epoched_']};
-% cleanedEpochedSuffix   = {'_noSpikes_noWaves.set'};
 
 % Specify path to save the pepisode calculations to
 saveStem = [subjectDir 'Mat Files/Pepisode/' subjectID '_' teleporter '_pepisode_'];
 
 % Specify path to save the cell array of pepisode values to
-saveFile = [subjectDir 'Mat Files/Pepisode/Summary/' subjectID '_' teleporter '_pepisode_summary_noSpikes_noWaves'];
+saveFile = [subjectDir 'Mat Files/Pepisode/Summary/' subjectID '_' teleporter '_pepisode_summary_noSpikes_noWaves_3sBuffer'];
 
 % channel names to use
-chanList  = {'RAD3' 'RAD4' 'RAD5' 'RAD6' 'RHD1' 'RHD2' 'RHD3' 'RHD4' 'LAD3' 'LAD4' 'LAD5' 'LHD1' 'LHD2' 'LHD3'};
+chanList  = {'LAD1' 'LHD1'};
 
 % thresholds for pepisode 
 durationThresh  = 3; % # of cycles
@@ -57,12 +54,10 @@ amplitudeThresh = 95; % percent of distribution
 skipCompute = 0;
 
 % time periods of interest in ms relative to teleporter entry
-timePointNames = {'Pre' 'Tele' 'Post'};
-preTele = [-1000 0];
-teleNT  = [1 1830];
-teleFT  = [1 2830];
-postNT  = [1831 2830];
-postFT  = [2831 3830];
+timePointNames = {'Pre3' 'Pre2' 'Pre1' 'Tele' 'Post1' 'Post2' 'Post3'};
+
+timesNT = [-3000 -2001; -2000 -1001; -1000 0; 1 1830; 1831 2830; 2831 3830; 3831 4830];
+timesFT = [-3000 -2001; -2000 -1001; -1000 0; 1 2830; 2831 3830; 3831 4830; 4831 5830];
 
 % frequencies to use
 frequencies = logspace(log(1)/log(10),log(181)/log(10),31); % 31 log-spaced frequencies, as in Watrous 2011
@@ -84,8 +79,6 @@ end
 
 % Get depth names from chanList
 depthNames = unique(cellfun(@(s) s(1:3), chanList, 'UniformOutput', false));
-
-eeglab;
 
 
 %% Calculate power distributions for pepisode
@@ -143,6 +136,8 @@ for thisDepth = 1:length(depthNames)
     chanInd   = strcmpi(depthNames{thisDepth}, chanDepth);
     chanNames = chanList(chanInd);
     
+    numEDFs = size(cleanedUnepochedPrefix,2);
+    
     % Loop through EEG files
     for thisEDF = 1:numEDFs
         
@@ -190,29 +185,15 @@ for thisDepth = 1:length(depthNames)
                 % Loop through time points
                 for thisTimePoint = 1:length(timePointNames)
                     
-                    % Obtain the binary vector for the timepoint of
-                    % interest
-                    switch thisTimePoint
-                        case 1 % Pre-teleportation
-                            
-                            binarySelection = getPepisodeLKV(binaryVectorFile, thisEDF, trialList(thisTrial).latency, preTele(2) - preTele(1), preTele(1), frequencies);
+                    if strcmpi('NT', thisTimeType) == 1
                         
-                        case 2 % Teleportation
-                            
-                            if strcmpi('NT', thisTimeType) == 1
-                                binarySelection = getPepisodeLKV(binaryVectorFile, thisEDF, trialList(thisTrial).latency, teleNT(2) - teleNT(1), teleNT(1), frequencies);
-                            else
-                                binarySelection = getPepisodeLKV(binaryVectorFile, thisEDF, trialList(thisTrial).latency, teleFT(2) - teleFT(1), teleFT(1), frequencies);
-                            end
-                            
-                        case 3 % Post-teleportation
-                            
-                            if strcmpi('NT', thisTimeType) == 1
-                                binarySelection = getPepisodeLKV(binaryVectorFile, thisEDF, trialList(thisTrial).latency, postNT(2) - postNT(1), postNT(1), frequencies);
-                            else
-                                binarySelection = getPepisodeLKV(binaryVectorFile, thisEDF, trialList(thisTrial).latency, postFT(2) - postFT(1), postFT(1), frequencies);
-                            end
-                    end % switch thisTimePoint
+                        binarySelection = getPepisodeLKV(binaryVectorFile, thisEDF, trialList(thisTrial).latency, timesNT(thisTimePoint, 2) - timesNT(thisTimePoint, 1) , timesNT(thisTimePoint, 1), frequencies);
+                        
+                    else
+                        
+                        binarySelection = getPepisodeLKV(binaryVectorFile, thisEDF, trialList(thisTrial).latency, timesFT(thisTimePoint, 2) - timesFT(thisTimePoint, 1) , timesFT(thisTimePoint, 1), frequencies);
+                        
+                    end
                     
                     % Take the mean across time
                     meanPepisode = mean(binarySelection,3);
@@ -240,13 +221,3 @@ end % thisDepth
 fprintf('\n\nWriting output to file...\n');
 dlmcell([saveFile '.csv'], pepisodeSummary, 'delimiter', ',');
 save([saveFile '.mat'], 'pepisodeSummary');
-
-
-
-
-
-
-
-
-
-
