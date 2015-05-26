@@ -2,7 +2,7 @@ function powerVec = getPowerLKV(powerFile,EDFnumber,latencyBin,durationMS,offset
 % getPowerLKV - Return the zscored power data from a file for a set
 % of desired events. 
 %
-% FUNCTION powerVec=getPowerLKV(powerFile, EDFnumber, latencyBin, durationMS, offsetMS)
+% FUNCTION powerVec=getPowerLKV(powerFile, EDFnumber, latencyBin, durationMS, offsetMS,frequencies)
 %
 % INPUT ARGs:
 %   powerFile - the file calculated by calcPowerLKV.m with the
@@ -12,6 +12,7 @@ function powerVec = getPowerLKV(powerFile,EDFnumber,latencyBin,durationMS,offset
 %   durationMS - length of signal to extract in milliseconds
 %   offsetMS - offset in milliseconds for the start time, relative to
 %       the latency
+%   frequencies - vector of frequencies
 %
 %
 % OUTPUT ARGs:

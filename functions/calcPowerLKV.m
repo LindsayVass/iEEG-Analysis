@@ -13,12 +13,12 @@ function calcPowerLKV(eegList, chanNames, saveStem, frequencies, width)
 %
 %   chanNames: cell array of channel names to analyze
 %
-%   frequencies: vector of log-spaced frequencies to use for analysis
-%
 %   saveStem: string that includes the path to the folder to store the file
 %       as well as the initial segment of the fileName (the script will
 %       append the electrode name); for example
 %       '/path/to/power/UCDMC15_TeleporterA_power_'
+%
+%   frequencies: vector of log-spaced frequencies to use for analysis
 %
 %   width: number of cycles to use for wavelet convolution; default = 6
 %
