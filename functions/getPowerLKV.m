@@ -1,12 +1,12 @@
-function powerVec = getPowerLKV(powerFile,EDFnumber,latencyBin,durationMS,offsetMS,frequencies)
+function powerVec = getPowerLKV(powerVectors, samplerate,EDFnumber,latencyBin,durationMS,offsetMS,frequencies)
 % getPowerLKV - Return the zscored power data from a file for a set
 % of desired events. 
 %
-% FUNCTION powerVec=getPowerLKV(powerFile, EDFnumber, latencyBin, durationMS, offsetMS,frequencies)
+% FUNCTION powerVec=getPowerLKV(powerVectors, samplerate, EDFnumber, latencyBin, durationMS, offsetMS,frequencies)
 %
 % INPUT ARGs:
-%   powerFile - the file calculated by calcPowerLKV.m with the
-%       data for this set of events
+%   powerVectors - cell array of vectors calculated by calcPowerLKV
+%   samplerate - sampling rate of the EEG data in Hz
 %   EDFnumber - default = 1; which EDF we're evaluating
 %   latencyBin - time in EEG samples of the event of interest
 %   durationMS - length of signal to extract in milliseconds
@@ -22,7 +22,6 @@ function powerVec = getPowerLKV(powerFile,EDFnumber,latencyBin,durationMS,offset
 
 
 % Get the data and determine durations in EEG samples
-load(powerFile);
 duration = round((durationMS)*samplerate/1000);
 offset = round((offsetMS)*samplerate/1000);
 
