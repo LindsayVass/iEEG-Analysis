@@ -15,7 +15,7 @@ load(sessionInfoPath);
 %% Set up analysis parameters
 % if you've already calculated power and saved the .mat files, set this to
 % 0, otherwise 1
-calcPower = 0;
+calcPower = 1;
 
 % time periods of interest in ms relative to teleporter entry
 timePointNames = {'Pre3' 'Pre2' 'Pre1' 'Tele' 'Post1' 'Post2' 'Post3'};
@@ -30,7 +30,7 @@ frequencies = logspace(log(1)/log(10),log(181)/log(10),31); % 31 log-spaced freq
 
 for thisSubject = 1:length(fieldnames(sessionInfo))
     
-    for thisSession = 1:size(sessionInfo(thisSubject).teleporter)
+    for thisSession = 1:size(sessionInfo(thisSubject).teleporter, 2)
         
         % Extract session-specific data from structure
         subjectID  = sessionInfo(thisSubject).subjectID;
