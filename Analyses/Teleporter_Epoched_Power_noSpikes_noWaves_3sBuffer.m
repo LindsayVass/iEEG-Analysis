@@ -36,6 +36,10 @@ saveFile = [subjectDir 'Mat Files/Power/Summary/' subjectID '_' teleporter '_epo
 % channel names to use
 chanList  = {'LAD1' 'LHD1'};
 
+% if you've already calculated power and saved the .mat files, set this to
+% 0, otherwise 1
+calcPower = 0;
+
 % time periods of interest in ms relative to teleporter entry
 timePointNames = {'Pre3' 'Pre2' 'Pre1' 'Tele' 'Post1' 'Post2' 'Post3'};
 
@@ -64,45 +68,46 @@ end
 depthNames = unique(cellfun(@(s) s(1:3), chanList, 'UniformOutput', false));
 
 %% Calculate power for each epoch of each trial
-
-for thisDepth = 1:length(depthNames)
-    
-    % Load EEG data
-    eegPath = [cleanedEpochedPrefix{1} depthNames{thisDepth} cleanedEpochedSuffix{1}];
-    EEG = pop_loadset(eegPath);
-    
-    %% Create tables of epoch onsets and offsets
-    
-    % Keep only the 2nd value of each trial type since this indicates the time
-    % type (1 = NT, 2 = FT)
-    trialTypeList = {EEG.event.type}';
-    trialTypeList = cellstr(cellfun(@(s) s(2), trialTypeList));
-    
-    % Make a table of trial type list
-    trialTypeTable = table(trialTypeList);
-    
-    % Make tables of onsets and offsets
-    onsetTimeTable  = table({'1'; '2'}, [timesNT(:, 1)'; timesFT(:, 1)'], 'VariableNames', {'trialTypeList', 'onsetTimes'});
-    offsetTimeTable = table({'1'; '2'}, [timesNT(:, 2)'; timesFT(:, 2)'], 'VariableNames', {'trialTypeList', 'offsetTimes'});
-    
-    % Join the tables together
-    trialTimesTable = join(trialTypeTable, onsetTimeTable);
-    trialTimesTable = join(trialTimesTable, offsetTimeTable);
-    
-    
-    % Find the channels on this depth electrode
-    chanDepth = char(chanList);
-    chanDepth = chanDepth(:, 1:3); % keep the first 3 characters, removing the electrode #
-    chanDepth = cellstr(chanDepth);
-    chanInd   = strcmpi(depthNames{thisDepth}, chanDepth);
-    chanNames = chanList(chanInd);
-    
-    
-    %% Calculate power
-    calcEpochedPowerLKV(EEG, chanNames, {EEG.event.type}, trialTimesTable{:, 2}, trialTimesTable{:, 3}, saveStem, frequencies, 6, 3);
-    
-    
-end % thisDepth
+if calcPower
+    for thisDepth = 1:length(depthNames)
+        
+        % Load EEG data
+        eegPath = [cleanedEpochedPrefix{1} depthNames{thisDepth} cleanedEpochedSuffix{1}];
+        EEG = pop_loadset(eegPath);
+        
+        %% Create tables of epoch onsets and offsets
+        
+        % Keep only the 2nd value of each trial type since this indicates the time
+        % type (1 = NT, 2 = FT)
+        trialTypeList = {EEG.event.type}';
+        trialTypeList = cellstr(cellfun(@(s) s(2), trialTypeList));
+        
+        % Make a table of trial type list
+        trialTypeTable = table(trialTypeList);
+        
+        % Make tables of onsets and offsets
+        onsetTimeTable  = table({'1'; '2'}, [timesNT(:, 1)'; timesFT(:, 1)'], 'VariableNames', {'trialTypeList', 'onsetTimes'});
+        offsetTimeTable = table({'1'; '2'}, [timesNT(:, 2)'; timesFT(:, 2)'], 'VariableNames', {'trialTypeList', 'offsetTimes'});
+        
+        % Join the tables together
+        trialTimesTable = join(trialTypeTable, onsetTimeTable);
+        trialTimesTable = join(trialTimesTable, offsetTimeTable);
+        
+        
+        % Find the channels on this depth electrode
+        chanDepth = char(chanList);
+        chanDepth = chanDepth(:, 1:3); % keep the first 3 characters, removing the electrode #
+        chanDepth = cellstr(chanDepth);
+        chanInd   = strcmpi(depthNames{thisDepth}, chanDepth);
+        chanNames = chanList(chanInd);
+        
+        
+        %% Calculate power
+        calcEpochedPowerLKV(EEG, chanNames, {EEG.event.type}, trialTimesTable{:, 2}, trialTimesTable{:, 3}, saveStem, frequencies, 6, 3);
+        
+        
+    end % thisDepth
+end
 
 
 %% Extract power values for our epochs of interest
@@ -133,7 +138,11 @@ for thisDepth = 1:length(depthNames)
         load(powerVectorFile);
         
         % Loop through trials
-        for thisTrial = 1:size(trialTypes, 1)
+        for thisTrial = 1:size(trialTypes, 2)
+            
+            if thisTrial == 2
+                test;
+            end
             
             % Extract the trial type for this trial
             thisLabel = trialTypes{thisTrial};
