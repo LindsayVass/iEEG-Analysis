@@ -1,52 +1,67 @@
-% This script will extract spectral power for a given set of time points
-% and frequencies in seven epochs:
-%   - Pre-teleportation (-3000 : -2001 ms) (-2000 : -1001 ms) (-1000 : 0 ms)
-%   - Teleportation (0 : 1830 ms for NT or 0 : 2830 ms for FT)
-%   - Post-teleportation
-%       - NT: (1831 : 2830 ms) (2831 : 3830 ms) (3831 : 4830 ms)
-%       - FT: (2831 : 3830 ms) (3831 : 4830 ms) (4831 : 5830 ms)
+function Teleporter_Epoched_Power(...
+    subjectID, ...
+    subjectDir, ...
+    teleporter, ...
+    chanList, ...
+    cleanedEpochedPrefix, ...
+    cleanedEpochedSuffix, ...
+    saveStem, ...
+    saveFile, ...
+    calcPower, ...
+    timePointNames, ...
+    timesNT, ...
+    timesFT, ...
+    frequencies)
+% function Teleporter_Epoched_Power(...
+%     subjectID, ...
+%     subjectDir, ...
+%     teleporter, ...
+%     chanList, ...
+%     cleanedEpochedPrefix, ...
+%     cleanedEpochedSuffix, ...
+%     saveStem, ...
+%     saveFile, ...
+%     calcPower, ...
+%     timePointNames, ...
+%     timesNT, ...
+%     timesFT, ...
+%     frequencies)
 %
-% Lindsay Vass 29 May 2015
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-clear all;close all;clc;
-
-%% set parameters for analysis
-
-% Subject info
-subjectID  = 'UCDMC13';
-subjectDir = ['/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/' subjectID '/'];
-teleporter = 'TeleporterA';
-chanList  = {'LAD1' 'LHD1'};
-
-% Specify file naming conventions for data. There are
-% separate EEG files for each depth electrode, so we will specify every
-% part of the path except the depth electrode name. Then, we will later
-% combine these as [prefix depthName suffix]. We will use a cell array to
-% allow for multiple prefixes or suffixes (e.g., different prefixes for
-% EDF1 and EDF2)
-cleanedEpochedPrefix = {[subjectDir 'Epoched Data/' subjectID '_' teleporter '_epoched_']};
-cleanedEpochedSuffix = {'_noSpikes_noWaves.set'};
-
-% Specify path to save the power calculations to
-saveStem = [subjectDir 'Mat Files/Power/' subjectID '_' teleporter '_epoched_power_'];
-
-% Specify path to save the cell array of power values to
-saveFile = [subjectDir 'Mat Files/Power/Summary/' subjectID '_' teleporter '_epoched_power_summary_noSpikes_noWaves_3sBuffer'];
-
-
-% if you've already calculated power and saved the .mat files, set this to
-% 0, otherwise 1
-calcPower = 0;
-
-% time periods of interest in ms relative to teleporter entry
-timePointNames = {'Pre3' 'Pre2' 'Pre1' 'Tele' 'Post1' 'Post2' 'Post3'};
-
-timesNT = [-3000 -2001; -2000 -1001; -1000 0; 1 1830; 1831 2830; 2831 3830; 3831 4830];
-timesFT = [-3000 -2001; -2000 -1001; -1000 0; 1 2830; 2831 3830; 3831 4830; 4831 5830];
-
-% frequencies to use
-frequencies = logspace(log(1)/log(10),log(181)/log(10),31); % 31 log-spaced frequencies, as in Watrous 2011
+% EXAMPLE INPUTS:
+%
+% subjectID  = 'UCDMC13';
+% subjectDir = ['/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/' subjectID '/'];
+% teleporter = 'TeleporterA';
+% chanList  = {'LAD1' 'LHD1'};
+% 
+% % Specify file naming conventions for data. There are
+% % separate EEG files for each depth electrode, so we will specify every
+% % part of the path except the depth electrode name. Then, we will later
+% % combine these as [prefix depthName suffix]. We will use a cell array to
+% % allow for multiple prefixes or suffixes (e.g., different prefixes for
+% % EDF1 and EDF2)
+% cleanedEpochedPrefix = {[subjectDir 'Epoched Data/' subjectID '_' teleporter '_epoched_']};
+% cleanedEpochedSuffix = {'_noSpikes_noWaves.set'};
+% 
+% % Specify path to save the power calculations to
+% saveStem = [subjectDir 'Mat Files/Power/' subjectID '_' teleporter '_epoched_power_'];
+% 
+% % Specify path to save the cell array of power values to
+% saveFile = [subjectDir 'Mat Files/Power/Summary/' subjectID '_' teleporter '_epoched_power_summary_noSpikes_noWaves_3sBuffer'];
+% 
+% 
+% % if you've already calculated power and saved the .mat files, set this to
+% % 0, otherwise 1
+% calcPower = 0;
+% 
+% % time periods of interest in ms relative to teleporter entry
+% timePointNames = {'Pre3' 'Pre2' 'Pre1' 'Tele' 'Post1' 'Post2' 'Post3'};
+% 
+% timesNT = [-3000 -2001; -2000 -1001; -1000 0; 1 1830; 1831 2830; 2831 3830; 3831 4830];
+% timesFT = [-3000 -2001; -2000 -1001; -1000 0; 1 2830; 2831 3830; 3831 4830; 4831 5830];
+% 
+% % frequencies to use
+% frequencies = logspace(log(1)/log(10),log(181)/log(10),31); % 31 log-spaced frequencies, as in Watrous 2011
 
 %% set paths and filenames
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/eeglab13_3_2b'));
@@ -138,10 +153,6 @@ for thisDepth = 1:length(depthNames)
         
         % Loop through trials
         for thisTrial = 1:size(trialTypes, 2)
-            
-            if thisTrial == 2
-                test;
-            end
             
             % Extract the trial type for this trial
             thisLabel = trialTypes{thisTrial};
