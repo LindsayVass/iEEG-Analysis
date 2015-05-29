@@ -1,4 +1,4 @@
-function calcEpochedPowerLKV(eegPath, chanNames, epochOnsets, epochOffsets, saveStem, frequencies, width, bufferCycles)
+function calcEpochedPowerLKV(EEG, chanNames, epochOnsets, epochOffsets, saveStem, frequencies, width, bufferCycles)
 % calcPowerLKV: Calculate power on the clean segments of the EEG.
 % This function will loop through the channels in "chanNames" and calculate
 % the z-score of the power of the EEG data at each frequency.
@@ -9,7 +9,7 @@ function calcEpochedPowerLKV(eegPath, chanNames, epochOnsets, epochOffsets, save
 % an output file where they can be accessed later using getPowerLKV.
 %
 % INPUTS:
-%   eegPath: path to the epoched EEG
+%   EEG: EEG structure from EEGLAB
 %
 %   chanNames: cell array of channel names to analyze for this EEG
 %
@@ -46,9 +46,6 @@ end
 if (size(epochOnsets) ~= size(epochOffsets))
     error('Different number of onsets and offsets.')
 end
-
-% Load the EEG data
-EEG = pop_loadset(eegPath);
 
 % Calculate amount of buffer to use. Based on Mike Cohen's recommendation,
 % (p.77 of Analyizng Neural Time Series Data), we'll use the duration of 3
@@ -148,11 +145,11 @@ function [B,t,f]=multienergyvec(S,f,Fs,width)
 % f: vector with frequencies for which power was computed
 B = zeros(length(f),length(S));
 
-fprintf('frequency ');
+% fprintf('frequency ');
 for a=1:length(f)
-    fprintf('%d ',a);
+%     fprintf('%d ',a);
     B(a,:)=energyvec(f(a),S,Fs,width);
 end
-fprintf('\n');
+% fprintf('\n');
 
 t = (1:size(S,2))/Fs;
