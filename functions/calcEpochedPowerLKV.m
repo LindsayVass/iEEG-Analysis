@@ -1,4 +1,4 @@
-function calcEpochedPowerLKV(EEG, chanNames, epochOnsets, epochOffsets, saveStem, frequencies, width, bufferCycles)
+function calcEpochedPowerLKV(EEG, chanNames, trialTypes, epochOnsets, epochOffsets, saveStem, frequencies, width, bufferCycles)
 % calcPowerLKV: Calculate power on the clean segments of the EEG.
 % This function will loop through the channels in "chanNames" and calculate
 % the z-score of the power of the EEG data at each frequency.
@@ -12,6 +12,9 @@ function calcEpochedPowerLKV(EEG, chanNames, epochOnsets, epochOffsets, saveStem
 %   EEG: EEG structure from EEGLAB
 %
 %   chanNames: cell array of channel names to analyze for this EEG
+%
+%   trialTypes: cell array of trial type labels; this isn't actually used,
+%       just saved with the data for ease of analysis later
 %
 %   epochOnsets: trials x onsets vector containing the onset in seconds for
 %       the events of interest, relative to time 0 in the trial (from
@@ -123,7 +126,7 @@ for thisChan = 1:length(chanNames)
     end % thisTrial
     
     % Save the output
-    save([saveStem chanNames{thisChan} '.mat'], 'allPowerData', 'frequencies');
+    save([saveStem chanNames{thisChan} '.mat'], 'allPowerData', 'trialTypes', 'frequencies');
     
 end % thisChan
 

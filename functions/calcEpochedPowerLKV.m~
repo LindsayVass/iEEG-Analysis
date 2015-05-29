@@ -1,4 +1,4 @@
-function calcEpochedPowerLKV(eegPath, chanNames, epochOnsets, epochOffsets, saveStem, frequencies, width, bufferCycles)
+function calcEpochedPowerLKV(EEG, chanNames, trialTypes, epochOnsets, epochOffsets, saveStem, frequencies, width, bufferCycles)
 % calcPowerLKV: Calculate power on the clean segments of the EEG.
 % This function will loop through the channels in "chanNames" and calculate
 % the z-score of the power of the EEG data at each frequency.
@@ -9,9 +9,11 @@ function calcEpochedPowerLKV(eegPath, chanNames, epochOnsets, epochOffsets, save
 % an output file where they can be accessed later using getPowerLKV.
 %
 % INPUTS:
-%   eegPath: path to the epoched EEG
+%   EEG: EEG structure from EEGLAB
 %
 %   chanNames: cell array of channel names to analyze for this EEG
+%
+%   trialTypes: cell array of trial type labels
 %
 %   epochOnsets: trials x onsets vector containing the onset in seconds for
 %       the events of interest, relative to time 0 in the trial (from
@@ -47,9 +49,6 @@ if (size(epochOnsets) ~= size(epochOffsets))
     error('Different number of onsets and offsets.')
 end
 
-% Load the EEG data
-EEG = pop_loadset(eegPath);
-
 % Calculate amount of buffer to use. Based on Mike Cohen's recommendation,
 % (p.77 of Analyizng Neural Time Series Data), we'll use the duration of 3
 % cycles at the lowest frequency.
@@ -65,20 +64,7 @@ for thisChan = 1:length(chanNames)
     
     % Let the user know the current status
     fprintf(['\n\n\nCalculating power for channel ' num2str(thisChan) ' of ' num2str(length(chanNames)) '\n']);
-    
-    % Initialize a cell array to hold all of the power values from each segment
-    % of each EEG
-    powerHolder = cell(size(eegPath));
-    
-    % Initialize a cell array to hold the duration of each segment of each EEG
-    durationHolder = cell(size(eegPath));
-    
-    % Initialize a vector to hold all power values from this EEG
-    eegPower = [];
-    
-    % Initialize a vector to hold all segment durations from this EEG
-    segmentDurations = [];
-     
+      
     % find the index of this channel
     chanInd = find(strcmpi(chanNames{thisChan}, {EEG.chanlocs.labels}));
     
@@ -138,11 +124,8 @@ for thisChan = 1:length(chanNames)
         
     end % thisTrial
     
-    
-    
     % Save the output
-    samplerate = EEG.srate;
-    save([saveStem chanNames{thisChan} '.mat'], 'powerVectors', 'frequencies', 'samplerate');
+    save([saveStem chanNames{thisChan} '.mat'], 'allPowerData', 'frequencies');
     
 end % thisChan
 
@@ -164,11 +147,11 @@ function [B,t,f]=multienergyvec(S,f,Fs,width)
 % f: vector with frequencies for which power was computed
 B = zeros(length(f),length(S));
 
-fprintf('frequency ');
+% fprintf('frequency ');
 for a=1:length(f)
-    fprintf('%d ',a);
+%     fprintf('%d ',a);
     B(a,:)=energyvec(f(a),S,Fs,width);
 end
-fprintf('\n');
+% fprintf('\n');
 
 t = (1:size(S,2))/Fs;
