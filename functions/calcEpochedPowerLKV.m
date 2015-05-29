@@ -118,7 +118,7 @@ for thisChan = 1:length(chanNames)
             zscorePower = zscore(logPower, 0, 2);
             
             % Add to the summary array
-            allPowerData{thisTrial, thisEpoch} = powerValTrimmed;
+            allPowerData{thisTrial, thisEpoch} = zscorePower;
             
             
         end % thisEpoch
