@@ -116,9 +116,8 @@ for thisChan = 1:length(chanNames)
             % Trim the data to remove the buffers
             powerValTrimmed = powerVal(:, bufferBins + 1 : length(powerVal) - bufferBins);
             
-            % Take the log(power) and then z-score it within each frequency
+            % Take the log(power) 
             logPower = log(powerValTrimmed);
-            zscorePower = zscore(logPower, 0, 2);
             
             % Add to the summary array
             chanData{thisTrial, thisEpoch} = zscorePower;
