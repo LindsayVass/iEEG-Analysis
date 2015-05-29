@@ -139,7 +139,7 @@ for thisChan = 1:length(chanNames)
         for thisRow = 1:size(chanData, 1)
             
             expectedCols = size(chanData{thisRow, thisCol}, 2);
-            allPowerData{thisRow, thisCol} = allChanDataZ(:, colInd:colInd + expectedCols - 1) ;
+            allPowerData{thisRow, thisCol} = allChanData(:, colInd:colInd + expectedCols) - 1;
             colInd = colInd + expectedCols;
             
         end % thisRow
