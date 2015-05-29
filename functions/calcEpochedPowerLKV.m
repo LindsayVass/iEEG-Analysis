@@ -120,7 +120,7 @@ for thisChan = 1:length(chanNames)
             logPower = log(powerValTrimmed);
             
             % Add to the summary array
-            chanData{thisTrial, thisEpoch} = zscorePower;
+            chanData{thisTrial, thisEpoch} = logPower;
             
             
         end % thisEpoch
