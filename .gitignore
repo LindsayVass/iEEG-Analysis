@@ -1,0 +1,25 @@
+# Matlab temp files
+*.m~
+
+# Data folders
+Subjects/*/*Data/
+Subjects/*/Figures/
+Subjects/*/Mat Files/
+Subjects/*/PreProcessing Intermediates/
+Subjects/*/Scripts/OLD*
+Subjects/*/Scripts/BAD*
+Group Analysis/*/Old/
+Group Analysis/*/Figures/
+
+# R RMD output
+*.html
+
+# History files
+.Rhistory
+.Rapp.history
+
+# Example code in package build process
+*-Ex.R
+
+# RStudio files
+.Rproj.user/
