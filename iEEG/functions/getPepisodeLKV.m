@@ -1,10 +1,10 @@
 function binaryVec = getPepisodeLKV(unionFile,EDFnumber,latencyBin,durationMS,offsetMS,frequencies)
-% GETPEPISODE - Return the Pepisode union data from a file for a set
+% getPepisodeLKV - Return the Pepisode union data from a file for a set
 % of desired events. This function gives the complete vector of zeros
 % and ones, you still have to do the averaging to come to a value for
 % pepisode (e.g. pepisode=mean(unionvec,3)=0.21)
 %
-% FUNCTION binaryVec=getPepisodeLKV(unionFile,events,durationMS,offsetMS)
+% FUNCTION binaryVec=getPepisodeLKV(unionFile,EDFnumber,latencyBin,durationMS,offsetMS,frequencies)
 %
 % INPUT ARGs:
 %   unionFile - the file calculated by calcPepisodeLKV.m with the
