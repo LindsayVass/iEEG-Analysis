@@ -56,10 +56,10 @@ end
 powerVal = single(multienergyvec(bufferedData, frequencies, samplingRate, 6)); 
 
 % Trim the buffers
-powerVal = powerVal(bufferBins + 1:length(powerVal) - bufferBins);
+powerVal = powerVal(:, bufferBins + 1:length(powerVal) - bufferBins);
 
 % Initialize output matrix
-binaryMatrix = zeros(length(frequencies), length(powerVal) - 2 * bufferBins);
+binaryMatrix = zeros(length(frequencies), length(powerVal));
 
 for thisFreq = 1:length(frequencies)
     
