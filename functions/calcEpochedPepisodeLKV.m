@@ -44,7 +44,7 @@ freqList = cell2mat({powerDistributions.frequency});
 
 % Check that the frequencies we're querying are the same frequencies we
 % have distributions for
-if sum(sort(freqList) == sort(frequencies)) ~= length(frequencies)
+if sum(ismember(frequencies, freqList)) ~= length(frequencies)
     error('The frequencies you requested for pepisode calculations are not the frequencies provided in powerDistributions.')
     fprintf(['\nMissing frequencies: ' num2str(setdiff(frequencies, freqList)) '\n']);
 end
@@ -54,6 +54,9 @@ end
 
 % Extract power
 powerVal = single(multienergyvec(bufferedData, frequencies, samplingRate, 6)); 
+
+% Trim the buffers
+powerVal = powerVal(bufferBins + 1:length(powerVal) - bufferBins);
 
 % Initialize output matrix
 binaryMatrix = zeros(length(frequencies), length(powerVal) - 2 * bufferBins);
@@ -68,9 +71,6 @@ for thisFreq = 1:length(frequencies)
     
     % Identify oscillations
     binaryVector = findPepisodes(powerVal(thisFreq,:), powerThresh, durationThresh, frequencies(thisFreq), samplingRate);
-    
-    % Trim the buffers
-    binaryVector = binaryVector(bufferBins + 1:length(binaryVector) - bufferBins);
     
     % Add to the output matrix
     binaryMatrix(thisFreq, :) = binaryVector;
