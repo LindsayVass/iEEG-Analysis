@@ -14,7 +14,7 @@ Group Analysis/*/Figures/
 # R RMD output
 *.html
 *.Rda
-*.RData
+.RData
 
 # History files
 .Rhistory
