@@ -172,4 +172,4 @@ end % thisDepth
 % Write out the summary cell array to file
 fprintf('\n\nWriting output to file...\n');
 dlmcell([saveFile '.csv'], pepisodeSummary, 'delimiter', ',');
-save([saveFile '.mat'], 'powerSummary');
+save([saveFile '.mat'], 'pepisodeSummary');
