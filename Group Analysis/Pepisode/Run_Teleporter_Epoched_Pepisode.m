@@ -24,7 +24,7 @@ frequencies = logspace(log(1)/log(10),log(181)/log(10),31); % 31 log-spaced freq
 
 %% Run the analysis for each session
 
-for thisSubject = 1:length(fieldnames(sessionInfo))
+for thisSubject = 1:size(sessionInfo, 2)
     
     for thisSession = 1:size(sessionInfo(thisSubject).teleporter, 2)
         
