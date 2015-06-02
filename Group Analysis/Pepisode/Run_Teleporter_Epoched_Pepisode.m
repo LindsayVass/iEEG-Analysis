@@ -45,15 +45,17 @@ for thisSubject = 1:length(fieldnames(sessionInfo))
         numEDFs = sessionInfo(thisSubject).numEDFs(thisSession);
         if numEDFs == 1
             cleanedUnepochedPrefix = {[subjectDir 'PreProcessing Intermediates/' subjectID '_' teleporter '_unepoched_']};
+            cleanedUnepochedSuffix = {'_noSpikes_noWaves.set'};
         else
             cleanedUnepochedPrefix = cell(numEDFs, 1);
             for thisEDF = 1:numEDFs
                 
                 cleanedUnepochedPrefix(thisEDF) = {[subjectDir 'PreProcessing Intermediates/' subjectID '_' teleporter '_EDF' num2str(thisEDF) '_unepoched_']};
+                cleanedUnepochedSuffix(thisEDF) = {'_noSpikes_noWaves.set'};
                 
             end % thisEDF
         end
-        cleanedUnepochedSuffix = {'_noSpikes_noWaves.set'};
+        
         
         cleanedEpochedPrefix = {[subjectDir 'Epoched Data/' subjectID '_' teleporter '_epoched_']};
         cleanedEpochedSuffix = {'_noSpikes_noWaves.set'};
