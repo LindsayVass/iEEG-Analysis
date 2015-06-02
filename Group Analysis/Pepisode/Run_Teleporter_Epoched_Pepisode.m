@@ -16,12 +16,28 @@ load(sessionInfoPath);
 % time periods of interest in ms relative to teleporter entry
 timePointNames = {'Pre3' 'Pre2' 'Pre1' 'Tele' 'Post1' 'Post2' 'Post3'};
 
-timesNT = [-3000 -2001; -2000 -1001; -1000 0; 1 1830; 1831 2830; 2831 3830; 3831 4830];
-timesFT = [-3000 -2001; -2000 -1001; -1000 0; 1 2830; 2831 3830; 3831 4830; 4831 5830];
+timesNT = [-2999 -2000; -1999 -1000; -999 0; 1 1830; 1831 2830; 2831 3830; 3831 4830];
+timesFT = [-2999 -2000; -1999 -1000; -999 0; 1 2830; 2831 3830; 3831 4830; 4831 5830];
 
 % frequencies to use
 frequencies = logspace(log(1)/log(10),log(181)/log(10),31); % 31 log-spaced frequencies, as in Watrous 2011
 
+%% Check that all frequencies are valid for pepisode
+intervalsNT = timesNT(:,2) - timesNT(:, 1) + 1;
+intervalsFT = timesFT(:,2) - timesFT(:, 1) + 1;
+minInterval = min([intervalsNT; intervalsFT]);
+
+durationThresh = 3; % duration for pepisode in cycles
+minFrequency = durationThresh / (minInterval / 1000);
+
+excludedFreqs = frequencies(frequencies < minFrequency);
+frequencies   = frequencies(frequencies >= minFrequency);
+
+fprintf(['\n\n\n WARNING: \n\n']);
+fprintf(['Pepisode cannot be calculated for some frequencies because there \n' ...
+        'must be ' num2str(durationThresh) ' complete cycles to estimate pepisode.\n' ...
+        'Excluding the following frequencies:\n']);
+fprintf([num2str(excludedFreqs) '\n\n']);
 %% Run the analysis for each session
 
 for thisSubject = 1:size(sessionInfo, 2)
