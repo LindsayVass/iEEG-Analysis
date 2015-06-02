@@ -23,6 +23,7 @@
 library(dplyr)
 library(reshape2)
 library(permute)
+library(ggplot2)
 
 setwd('/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Power/')
 load("All_Subjects_Epoched_Power_CLEAN_3sBuffer_2015-05-29.Rda")
@@ -138,5 +139,22 @@ wilcoxonPlot
 today <- Sys.Date()
 ggsave(filename = paste0("Figures/Each_Electrode_Epoched_Power_Wilcoxon_by_Timepoint_Bar_", today, ".png"))
 
-
+# Plot data for each electrode separately ---------------------------------
+for (thisFreqBand in 1:nlevels(allPowerData$FrequencyBand)) {
+  electrodeWisePlot <- allPowerData %>%
+    filter(FrequencyBand == levels(allPowerData$FrequencyBand)[thisFreqBand]) %>%
+    group_by(TimePoint, ElectrodeID) %>%
+    mutate(SEM = sd(Power) / sqrt(n() - 1)) %>%
+    summarise(Power = mean(Power), SEM = mean(SEM)) %>%
+    ggplot(aes(x = TimePoint, y = Power, ymin = Power - SEM, ymax = Power + SEM)) +
+    geom_point(size = 4) +
+    geom_pointrange() +
+    facet_wrap(~ ElectrodeID) +
+    ggtitle(paste0("Z-Scored ", levels(allPowerData$FrequencyBand)[thisFreqBand], " Power"))
   
+  # Save the chart
+  today <- Sys.Date()
+  ggsave(filename = paste0("Figures/Each_Electrode_Epoched_", levels(allPowerData$FrequencyBand)[thisFreqBand], "_Power_by_Timepoint_", today, ".png"))
+  
+}
+
