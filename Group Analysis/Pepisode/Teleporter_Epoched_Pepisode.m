@@ -59,10 +59,8 @@ function Teleporter_Epoched_Pepisode(...
 % frequencies = logspace(log(1)/log(10),log(181)/log(10),31); % 31 log-spaced frequencies, as in Watrous 2011
 
 %% set paths and filenames
-addpath(genpath('/Users/Lindsay/Documents/MATLAB/eeglab13_3_2b'));
-addpath(genpath('/Users/Lindsay/Documents/MATLAB/PepisodeCode/'));
-addpath(genpath('/Users/Lindsay/Documents/MATLAB/functions/'));
-addpath(genpath('/Users/Lindsay/Documents/MATLAB/arne_code/'));
+addpath(genpath('/Users/Lindsay/Documents/MATLAB/eeglab13_4_4b'));
+addpath(genpath('/Users/Lindsay/Documents/MATLAB/iEEG/functions/'));
 
 % Make the output directory if it doesn't already exist
 if ~exist([subjectDir 'Mat Files/Pepisode/'], 'dir')
