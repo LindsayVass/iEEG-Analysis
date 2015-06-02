@@ -101,7 +101,7 @@ for thisDepth = 1:length(depthNames)
         % Calculate power distribution if it doesn't already exist
         powerDistSaveFile = [subjectDir 'Mat Files/Pepisode/Power Distributions/' subjectID '_' teleporter '_' chanNames{thisChan} '_power_distribution.mat'];
         if ~exist(powerDistSaveFile, 'file')
-            calcPowerDistributionLKV(eegList, chanNames{thisChan}, frequencies, 6, powerDistSaveFile);
+            powerDistribution = calcPowerDistributionLKV(eegList, chanNames{thisChan}, frequencies, 6, powerDistSaveFile);
         else
             load(powerDistSaveFile);
         end
@@ -130,7 +130,7 @@ for thisDepth = 1:length(depthNames)
                 eegData = EEG.data(chanInd, timeInds, thisTrial);
                 
                 [~, percentTimePepisode] = calcEpochedPepisodeLKV(powerDistribution, frequencies, eegData, EEG.srate, 95, 3);
-                
+              
                 % Add to output array
                 if strcmpi('1', EEG.event(thisTrial).type(1)) == 1
                     spaceType = 'NS';
