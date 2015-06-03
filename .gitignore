@@ -11,6 +11,10 @@ Subjects/*/Scripts/BAD*
 Group Analysis/*/Old/
 Group Analysis/*/Figures/
 
+# Data files
+*.mat
+*.csv
+
 # R RMD output
 *.html
 *.Rda
@@ -25,3 +29,4 @@ Group Analysis/*/Figures/
 
 # RStudio files
 .Rproj.user/
+.Rproj.user
