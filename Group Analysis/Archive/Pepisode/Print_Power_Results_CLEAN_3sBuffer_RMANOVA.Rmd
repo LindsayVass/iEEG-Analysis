@@ -1,0 +1,223 @@
+---
+title: "Power Two-Way Repeated Measures ANOVA Results"
+author: Lindsay Vass
+date: 27 May 2015
+output: html_document
+---
+
+# Calculation of Power
+
+Six-cycle wavelets were used to estimate the power at each frequency and time
+point of the cleaned data set. I then took the log(Power) and z-scored these
+values within each electrode and frequency. All plotted values are of these
+z-scored log(Power) values.
+
+* 31 log-spaced frequencies between 1 Hz and 181 Hz
+* 6 cycle wavelet for power estimation
+
+I then extracted the mean power value for each trial in a series of 
+contiguous time bins that surrounded the teleportation event. These bins were
+defined as follows (t0 = time of teleporter entry):
+
+* -3000 : -2001 ms
+* -2000 : -1001 ms
+* -1000 : 0 ms
+* Time in Teleporter (0 : 1830 ms for short time; 0 : 2830 ms for long time)
+* Exit time : Exit time + 1000 ms
+* Exit time + 1001 ms : Exit time + 2000 ms
+* Exit time + 2001 ms : Exit time + 3000 ms
+
+# Repeated Measures ANOVA and permutation testing
+
+Once the power values were extracted, I submitted them to two sets of 
+two-way repeated measures ANOVAs:
+
+* Space Condition x Timepoint
+* Time Condition x Timepoint
+
+After calculating the F statistics of the observed data, I built a distribution
+of F statistics for each ANOVA in order to calculate the true P value. The 
+current analysis used 10000 iterations to build each distribution. In each 
+section below, I plot the data from a given frequency band, and display the 
+corresponding F statistics and the estimated P values.
+
+``` {r, echo = FALSE, message = FALSE}
+library(dplyr)
+library(ggplot2)
+
+setwd('/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Power/')
+load("All_Subjects_Power_CLEAN_3sBuffer2015-05-27.Rda")
+load("All_Subjects_Power_CLEAN_3sBuffer_Two_Way_RMANOVA_2015-05-27.Rda")
+
+# Set up data by TIMEPOINT ---------------------------------------------------
+meanByTimePoint <- allPowerData %>%
+  filter(is.na(Power) == FALSE) %>% # UCDMC15 TeleporterB is NaN for NSFT
+  select(TimePoint,Power:FrequencyBand) %>%
+  group_by(ElectrodeID, FrequencyBand,TimePoint) 
+
+# We want our error bars to ultimately reflect the within-subject variability rather than between-subject
+# To do this, we'll use the methods in Cousineau (2005) Tutorials in Quantitative Methods for Psychology and
+# Morey (2008) [Same Journal], which corrects the bias in the Cousineau method
+# Essentially, we will calculate normalized values for each observation, in which we take the original observation,
+# subtract the electrode mean, add the group mean, and correct for the # of conditions
+
+# calculate the mean across conditions for each electrode for each frequency
+elecMean <- meanByTimePoint %>%
+  group_by(ElectrodeID, FrequencyBand) %>%
+  summarise(EMean = mean(Power))
+
+# calculate the mean across conditions across electrodes for each frequency
+groupMean <- meanByTimePoint %>%
+  group_by(FrequencyBand) %>%
+  summarise(GMean = mean(Power))
+
+# now we'll normalize the observations by taking into account the electrode and group means
+# to do this, we'll need to join our tables together
+normByTimePoint <- inner_join(meanByTimePoint, elecMean)
+normByTimePoint <- inner_join(normByTimePoint, groupMean) %>%
+  mutate(NormPower = Power - EMean + GMean) %>%
+  filter(is.na(Power) == FALSE) %>%
+  group_by(FrequencyBand, TimePoint) %>%
+  summarise(NormVar = var(NormPower)) %>%
+  mutate(NormVarUnbias = NormVar * (nlevels(allPowerData$TimePoint)/(nlevels(allPowerData$TimePoint) - 1)),
+         NormSEM = (sqrt(NormVarUnbias) / sqrt(nlevels(allPowerData$ElectrodeID)))) %>%
+  select(FrequencyBand, TimePoint, NormSEM)
+
+# now summarise the original data and join with the normalized SEM
+meanByTimePoint <- meanByTimePoint %>%
+  group_by(FrequencyBand, TimePoint) %>%
+  summarise(Power = mean(Power)) %>%
+  inner_join(normByTimePoint)
+
+# Summarize the data by SPACE condition ---------------------------------------
+
+meanBySpace <- allPowerData %>%
+  filter(is.na(Power) == FALSE) %>% # UCDMC15 TeleporterB is NaN for EDF1 NSFT
+  select(TrialSpaceType,TimePoint,Power:FrequencyBand) %>%
+  group_by(ElectrodeID, FrequencyBand,TrialSpaceType) 
+
+# We want our error bars to ultimately reflect the within-subject variability rather than between-subject
+# To do this, we'll use the methods in Cousineau (2005) Tutorials in Quantitative Methods for Psychology and
+# Morey (2008) [Same Journal], which corrects the bias in the Cousineau method
+# Essentially, we will calculate normalized values for each observation, in which we take the original observation,
+# subtract the electrode mean, add the group mean, and correct for the # of conditions
+
+# calculate the mean across conditions for each electrode for each frequency
+elecMean <- meanBySpace %>%
+  group_by(ElectrodeID, FrequencyBand, TimePoint, TrialSpaceType) %>%
+  summarise(EMean = mean(Power))
+
+# calculate the mean across conditions across electrodes for each frequency
+groupMean <- meanBySpace %>%
+  group_by(FrequencyBand, TimePoint, TrialSpaceType) %>%
+  summarise(GMean = mean(Power))
+
+# now we'll normalize the observations by taking into account the electrode and group means
+# to do this, we'll need to join our tables together
+normBySpace <- inner_join(meanBySpace, elecMean)
+normBySpace <- inner_join(normBySpace, groupMean) %>%
+  mutate(NormPower = Power - EMean + GMean) %>%
+  group_by(FrequencyBand, TimePoint, TrialSpaceType) %>%
+  summarise(NormVar = var(NormPower)) %>%
+  mutate(NormVarUnbias = NormVar * (nlevels(allPowerData$TrialSpaceType))/(nlevels(allPowerData$TrialSpaceType) - 1),
+         NormSEM = (sqrt(NormVarUnbias) / sqrt(nlevels(allPowerData$ElectrodeID)))) %>%
+  select(FrequencyBand, TimePoint, TrialSpaceType, NormSEM)
+
+# now summarise the original data and join with the normalized SEM
+meanBySpace <- meanBySpace %>%
+  group_by(FrequencyBand, TrialSpaceType, TimePoint) %>%
+  summarise(Power = mean(Power)) %>%
+  inner_join(normByTimePoint)
+
+# Summarize the data by TIME condition ----------------------------------------
+meanByTime <- allPowerData %>%
+  filter(is.na(Power) == FALSE) %>% # UCDMC15 TeleporterB is NaN for EDF1 NSFT
+  select(TrialTimeType,TimePoint,Power:FrequencyBand) %>%
+  group_by(ElectrodeID, FrequencyBand,TrialTimeType) 
+
+# We want our error bars to ultimately reflect the within-subject variability rather than between-subject
+# To do this, we'll use the methods in Cousineau (2005) Tutorials in Quantitative Methods for Psychology and
+# Morey (2008) [Same Journal], which corrects the bias in the Cousineau method
+# Essentially, we will calculate normalized values for each observation, in which we take the original observation,
+# subtract the electrode mean, add the group mean, and correct for the # of conditions
+
+# calculate the mean across conditions for each electrode for each frequency
+elecMean <- meanByTime %>%
+  group_by(ElectrodeID, FrequencyBand, TimePoint, TrialTimeType) %>%
+  summarise(EMean = mean(Power))
+
+# calculate the mean across conditions across electrodes for each frequency
+groupMean <- meanByTime %>%
+  group_by(FrequencyBand, TimePoint, TrialTimeType) %>%
+  summarise(GMean = mean(Power))
+
+# now we'll normalize the observations by taking into account the electrode and group means
+# to do this, we'll need to join our tables together
+normByTime <- inner_join(meanByTime, elecMean)
+normByTime <- inner_join(normByTime, groupMean) %>%
+  mutate(NormPower = Power - EMean + GMean) %>%
+  group_by(FrequencyBand, TimePoint, TrialTimeType) %>%
+  summarise(NormVar = var(NormPower)) %>%
+  mutate(NormVarUnbias = NormVar * (nlevels(allPowerData$TrialTimeType))/(nlevels(allPowerData$TrialTimeType) - 1),
+         NormSEM = (sqrt(NormVarUnbias) / sqrt(nlevels(allPowerData$ElectrodeID)))) %>%
+  select(FrequencyBand, TimePoint, TrialTimeType, NormSEM)
+
+# now summarise the original data and join with the normalized SEM
+meanByTime <- meanByTime %>%
+  group_by(FrequencyBand, TrialTimeType, TimePoint) %>%
+  summarise(Power = mean(Power)) %>%
+  inner_join(normByTimePoint)
+```
+
+```{r, echo = FALSE, comment = ""}
+
+for (thisFreq in 1:nlevels(allPowerData$FrequencyBand)) {
+  
+  thisFreqName <- levels(allPowerData$FrequencyBand)[thisFreq]
+  
+  # Plot the data
+  meanBySpace <- meanBySpace %>%
+    filter(FrequencyBand == thisFreqName) 
+  plot1 <-  ggplot(data = meanBySpace,
+                   aes(x = TimePoint,
+                       y = Power,
+                       ymin = Power - NormSEM,
+                       ymax = Power + NormSEM,
+                       color = TrialSpaceType)) +
+    geom_point(size = 4) +
+    geom_pointrange() +
+    ggtitle("Power: Space x Timepoint")
+  print(plot1)
+
+  
+  # Output the stats
+  results1 <- anovaResults %>% 
+    filter(FreqBand == thisFreqName & ANOVA == "SpaceXTimepoint") %>% 
+    select(Contrast:Pcorr)
+  print(results1)
+
+  
+  # Plot the data
+  meanByTime <- meanByTime %>%
+    filter(FrequencyBand == thisFreqName)
+  plot2 <-  ggplot(data = meanByTime,
+                   aes(x = TimePoint,
+                       y = Power,
+                       ymin = Power - NormSEM,
+                       ymax = Power + NormSEM,
+                       color = TrialTimeType)) +
+    geom_point(size = 4) +
+    geom_pointrange() +
+    ggtitle("Power: Time x Timepoint")
+  print(plot2)
+  
+  # Output the stats
+  results2 <- anovaResults %>% 
+    filter(FreqBand == thisFreqName & ANOVA == "TimeXTimepoint") %>% 
+    select(Contrast:Pcorr)
+  print(results2)
+  
+  }
+
+
+```

@@ -15,10 +15,16 @@ Group Analysis/*/Figures/
 *.mat
 *.csv
 
+# Output files
+*.png
+*.pdf
+*.eps
+
 # R RMD output
 *.html
 *.Rda
-.RData
+*.RData
+*.Rproj
 
 # History files
 .Rhistory
@@ -30,3 +36,13 @@ Group Analysis/*/Figures/
 # RStudio files
 .Rproj.user/
 .Rproj.user
+
+Group Analysis/Pepisode/.RData
+
+*.png
+
+*.xlsx
+
+*.csv
+
+*.Rda

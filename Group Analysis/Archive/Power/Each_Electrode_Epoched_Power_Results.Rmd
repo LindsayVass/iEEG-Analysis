@@ -1,0 +1,410 @@
+---
+title: "Histograms of Epoched Power Differences within Electrodes"
+author: Lindsay Vass
+date: 29 May 2015
+output: html_document
+---
+
+``` {r, echo = FALSE, message = FALSE}
+library(dplyr)
+library(reshape2)
+library(permute)
+library(ggplot2)
+
+setwd('/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Power/')
+load("All_Subjects_Epoched_Power_CLEAN_3sBuffer_2015-05-29.Rda")
+```
+
+# Calculation of Power
+
+Each trial was first epoched into contiguous time bins that surrounded the 
+teleportation event. These bins were defined as follows (t0 = time of teleporter 
+entry):
+
+* -1000 : 0 ms
+* Time in Teleporter (0 : 1830 ms for short time; 0 : 2830 ms for long time)
+* Exit time : Exit time + 1000 ms
+
+I then added a buffer to the beginning and end of each epoch. This buffer was
+equal to the length of 3 cycles at the lowest frequency. In this dataset, that
+was 3 cycles * `r min(allPowerData$Frequency)` Hz = `r 3 * min(allPowerData$Frequency) * 1000`
+ ms. Six-cycle wavelets were then used to estimate the power at each frequency
+and time point, at which point the buffers were trimmed from the data. I then 
+took the log(Power) and z-scored these values within each electrode and 
+frequency. All plotted values are of these z-scored log(Power) values.
+
+* 31 log-spaced frequencies between 1 Hz and 181 Hz
+* 6 cycle wavelet for power estimation
+
+## Power Differences by Timepoint
+
+In this first analysis, I collapsed across the spatial and temporal conditions
+for each trial to examine whether there were significant power differences
+between timepoints within a trial. I used a Wilcoxon signed-rank test to 
+evaluate the significance of the following four comparisons:
+
+* Pre > Tele
+* Pre < Tele
+* Tele > Post
+* Tele < Post
+
+For each comparison, I counted the number of electrodes that attained P < 0.05
+according to the Wilcoxon signed-rank test. I then used a one-sided binomial
+test to determine whether the total number of significant electrodes was greater
+than would be expected by chance (`r nlevels(allPowerData$ElectrodeID)` electrodes
+x 5% = `r nlevels(allPowerData$ElectrodeID) * 0.05` electrodes). Comparisons
+that resulted in a significant binomial test (P < 0.05) are signified with an
+asterisk (*). 
+
+``` {r, echo = FALSE, message = FALSE, fig.width = 20, fig.height = 10}
+# Initialize output data frame and prepare input data frame ---------------
+
+wilcoxonResults <- data.frame(ElectrodeID = NA,
+                              FrequencyBand = NA,
+                              Contrast = NA,
+                              P = NA)
+thisRow <- 1
+
+# Prepare input data
+allPowerData <- allPowerData %>%
+  filter(TimePoint == "Pre1" | TimePoint == "Tele" | TimePoint == "Post1") %>% # keep only timepoints of interest
+  select(TrialNumber, TimePoint, Power:FrequencyBand) 
+
+# Perform analysis for each electrode x frequency band --------------------
+
+for (thisElectrode in 1:nlevels(allPowerData$ElectrodeID)){
+  
+  # Get all data for this electrode
+  electrodeData <- allPowerData %>%
+    filter(ElectrodeID == levels(ElectrodeID)[thisElectrode]) %>%
+    select(-ElectrodeID) 
+  
+  for (thisFreqBand in 1:nlevels(allPowerData$FrequencyBand)) {
+    
+    # Filter data for this frequency band
+    frequencyData <- electrodeData %>%
+      filter(FrequencyBand == levels(FrequencyBand)[thisFreqBand]) %>%
+      select(-FrequencyBand) %>%
+      group_by(TrialNumber, TimePoint) %>%
+      summarise(Power = mean(Power))
+    
+    # Cast to wide format
+    frequencyDataWide <- frequencyData %>%
+      dcast(TrialNumber ~ TimePoint, value.var = "Power")
+    
+    # Wilcoxon signed-rank tests
+    preGtTele  <- wilcox.test(frequencyDataWide$Pre1, frequencyDataWide$Tele, alternative = "greater", paired=TRUE)
+    preLtTele  <- wilcox.test(frequencyDataWide$Pre1, frequencyDataWide$Tele, alternative = "less", paired=TRUE)
+    teleGtPost <- wilcox.test(frequencyDataWide$Tele, frequencyDataWide$Post1, alternative = "greater", paired = TRUE)
+    teleLtPost <- wilcox.test(frequencyDataWide$Tele, frequencyDataWide$Post1, alternative = "less", paired = TRUE)
+    
+    # Add to summary dataframe
+    wilcoxonResults[thisRow, ]     <- c(levels(allPowerData$ElectrodeID)[thisElectrode], 
+                                      levels(allPowerData$FrequencyBand)[thisFreqBand], 
+                                      "Pre > Tele", 
+                                      preGtTele$p.value)
+    wilcoxonResults[thisRow + 1, ] <- c(levels(allPowerData$ElectrodeID)[thisElectrode], 
+                                      levels(allPowerData$FrequencyBand)[thisFreqBand], 
+                                      "Pre < Tele", 
+                                      preLtTele$p.value)
+    wilcoxonResults[thisRow + 2, ] <- c(levels(allPowerData$ElectrodeID)[thisElectrode], 
+                                      levels(allPowerData$FrequencyBand)[thisFreqBand], 
+                                      "Tele > Post", 
+                                      teleGtPost$p.value)
+    wilcoxonResults[thisRow + 3, ] <- c(levels(allPowerData$ElectrodeID)[thisElectrode], 
+                                      levels(allPowerData$FrequencyBand)[thisFreqBand], 
+                                      "Tele < Post", 
+                                      teleLtPost$p.value)
+    thisRow <- thisRow + 4
+    
+  } # end thisFreqBand
+  
+} # end thisElectrode
+
+
+# Summarize significant wilcoxon results ----------------------------------
+
+# Reorder frequency band levels
+freqBandOrder <- c("Delta", "Theta", "Alpha", "Beta", "Gamma")
+wilcoxonResults$FrequencyBand <- factor(wilcoxonResults$FrequencyBand, levels = freqBandOrder)
+
+# Get the counts of the significant results
+wilcoxonSigResults <- wilcoxonResults %>%
+  filter(P < 0.05) %>%
+  group_by(FrequencyBand, Contrast) %>%
+  summarise(Count = n())
+
+# Perform binomial test to determine whether counts are higher than expected by chance
+binomP <- wilcoxonSigResults %>%
+  rowwise() %>%
+  do(BinomialTestP = binom.test(.$Count, 
+                                nlevels(allPowerData$ElectrodeID), 
+                                p = 0.05, 
+                                alternative = "greater")$p.value)
+wilcoxonSigResults <- cbind(wilcoxonSigResults, binomP) 
+
+# Make a dataframe for the significance markers
+sigMarkers <- wilcoxonSigResults %>%
+  filter(BinomialTestP < 0.05) %>%
+  mutate(Count = Count + 0.2) 
+
+# Plot the bar charts
+wilcoxonPlot <- wilcoxonSigResults %>%
+  ggplot(aes(x = Contrast, y = Count)) +
+  geom_bar(stat = "identity") +
+  geom_hline(aes(yintercept = 0.05*nlevels(allPowerData$ElectrodeID), 
+                 color = "red")) +
+  facet_grid(. ~ FrequencyBand) +
+  geom_text(data = sigMarkers, label = "*", size = 18) +
+  theme(strip.text.x = element_text(size = 18),
+        plot.title = element_text(size = 24, vjust = 2),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 18),
+        axis.text.y = element_text(size = 18),
+        axis.text.x = element_text(size = 18, angle = 90)) +
+  ggtitle("Frequency of Significant Differences in Z-scored log(Power) by Frequency Band")
+wilcoxonPlot
+
+```
+
+  
+## Power Differences by Spatial Condition
+
+In this second analysis, I collapsed across the temporal conditions and timepoints
+for each trial to examine whether there were significant power differences
+between spatial conditions across trials. I used a Mann-Whitney U test to 
+evaluate the significance of the following two comparisons:
+
+* NS > FS
+* NS < FS
+
+For each comparison, I counted the number of electrodes that attained P < 0.05
+according to the Wilcoxon signed-rank test. I then used a one-sided binomial
+test to determine whether the total number of significant electrodes was greater
+than would be expected by chance (`r nlevels(allPowerData$ElectrodeID)` electrodes
+x 5% = `r nlevels(allPowerData$ElectrodeID) * 0.05` electrodes). Comparisons
+that resulted in a significant binomial test (P < 0.05) are signified with an
+asterisk (*). 
+
+``` {r, echo = FALSE, message = FALSE, fig.width = 20, fig.height = 10}
+load("All_Subjects_Epoched_Power_CLEAN_3sBuffer_2015-05-29.Rda")
+
+# Initialize output data frame and prepare input data frame ---------------
+
+mannWhitneyResults <- data.frame(ElectrodeID = NA,
+                              FrequencyBand = NA,
+                              Contrast = NA,
+                              P = NA)
+thisRow <- 1
+
+# Prepare input data
+allPowerData <- allPowerData %>%
+  filter(TimePoint == "Pre1" | TimePoint == "Tele" | TimePoint == "Post1") %>% # keep only timepoints of interest
+  select(TrialNumber, TrialSpaceType, TimePoint, Power:FrequencyBand) 
+
+# Perform analysis for each electrode x frequency band --------------------
+
+for (thisElectrode in 1:nlevels(allPowerData$ElectrodeID)){
+  
+  # Get all data for this electrode
+  electrodeData <- allPowerData %>%
+    filter(ElectrodeID == levels(ElectrodeID)[thisElectrode]) %>%
+    select(-ElectrodeID) 
+  
+  for (thisFreqBand in 1:nlevels(allPowerData$FrequencyBand)) {
+    
+    # Filter data for this frequency band
+    frequencyData <- electrodeData %>%
+      filter(FrequencyBand == levels(FrequencyBand)[thisFreqBand]) %>%
+      select(-FrequencyBand) %>%
+      group_by(TrialNumber, TrialSpaceType) %>%
+      summarise(Power = mean(Power))
+    
+    # Cast to wide format
+    frequencyDataWide <- frequencyData %>%
+      dcast(TrialNumber ~ TrialSpaceType, value.var = "Power")
+    
+    # Wilcoxon signed-rank tests
+    NSGtFS  <- wilcox.test(frequencyDataWide$NS, frequencyDataWide$FS, alternative = "greater")
+    NSLtFS  <- wilcox.test(frequencyDataWide$NS, frequencyDataWide$FS, alternative = "less")
+    
+    # Add to summary dataframe
+    mannWhitneyResults[thisRow, ]     <- c(levels(allPowerData$ElectrodeID)[thisElectrode], 
+                                      levels(allPowerData$FrequencyBand)[thisFreqBand], 
+                                      "NS > FS", 
+                                      NSGtFS$p.value)
+    mannWhitneyResults[thisRow + 1, ] <- c(levels(allPowerData$ElectrodeID)[thisElectrode], 
+                                      levels(allPowerData$FrequencyBand)[thisFreqBand], 
+                                      "NS < FS", 
+                                      NSLtFS$p.value)
+    thisRow <- thisRow + 2
+    
+  } # end thisFreqBand
+  
+} # end thisElectrode
+
+
+# Summarize significant wilcoxon results ----------------------------------
+
+# Reorder frequency band levels
+freqBandOrder <- c("Delta", "Theta", "Alpha", "Beta", "Gamma")
+mannWhitneyResults$FrequencyBand <- factor(mannWhitneyResults$FrequencyBand, levels = freqBandOrder)
+
+# Get the counts of the significant results
+mannWhitneySigResults <- mannWhitneyResults %>%
+  filter(P < 0.05) %>%
+  group_by(FrequencyBand, Contrast) %>%
+  summarise(Count = n())
+
+# Perform binomial test to determine whether counts are higher than expected by chance
+binomP <- mannWhitneySigResults %>%
+  rowwise() %>%
+  do(BinomialTestP = binom.test(.$Count, 
+                                nlevels(allPowerData$ElectrodeID), 
+                                p = 0.05, 
+                                alternative = "greater")$p.value)
+mannWhitneySigResults <- cbind(mannWhitneySigResults, binomP) 
+
+# Make a dataframe for the significance markers
+sigMarkers <- mannWhitneySigResults %>%
+  filter(BinomialTestP < 0.05) %>%
+  mutate(Count = Count + 0.2) 
+
+# Plot the bar charts
+mannWhitneyPlot <- mannWhitneySigResults %>%
+  ggplot(aes(x = Contrast, y = Count)) +
+  geom_bar(stat = "identity") +
+  geom_hline(aes(yintercept = 0.05*nlevels(allPowerData$ElectrodeID), 
+                 color = "red")) +
+  facet_grid(. ~ FrequencyBand) +
+  geom_text(data = sigMarkers, label = "*", size = 18) +
+  theme(strip.text.x = element_text(size = 18),
+        plot.title = element_text(size = 24, vjust = 2),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18)) +
+  ggtitle("Frequency of Significant Differences in Z-scored log(Power) by Frequency Band")
+mannWhitneyPlot
+```
+
+
+## Power Differences by Temporal Condition
+
+In this third analysis, I collapsed across the spatial conditions and timepoints
+for each trial to examine whether there were significant power differences
+between temporal conditions across trials. I used a Mann-Whitney U test to 
+evaluatethe significance of the following two comparisons:
+
+* NT > FT
+* NT < FT
+
+For each comparison, I counted the number of electrodes that attained P < 0.05
+according to the Wilcoxon signed-rank test. I then used a one-sided binomial
+test to determine whether the total number of significant electrodes was greater
+than would be expected by chance (`r nlevels(allPowerData$ElectrodeID)` electrodes
+x 5% = `r nlevels(allPowerData$ElectrodeID) * 0.05` electrodes). Comparisons
+that resulted in a significant binomial test (P < 0.05) are signified with an
+asterisk (*). 
+
+``` {r, echo = FALSE, message = FALSE, fig.width = 20, fig.height = 10}
+load("All_Subjects_Epoched_Power_CLEAN_3sBuffer_2015-05-29.Rda")
+
+# Initialize output data frame and prepare input data frame ---------------
+
+mannWhitneyResults <- data.frame(ElectrodeID = NA,
+                              FrequencyBand = NA,
+                              Contrast = NA,
+                              P = NA)
+thisRow <- 1
+
+# Prepare input data
+allPowerData <- allPowerData %>%
+  filter(TimePoint == "Pre1" | TimePoint == "Tele" | TimePoint == "Post1") %>% # keep only timepoints of interest
+  select(TrialNumber, TrialTimeType, TimePoint, Power:FrequencyBand) 
+
+# Perform analysis for each electrode x frequency band --------------------
+
+for (thisElectrode in 1:nlevels(allPowerData$ElectrodeID)){
+  
+  # Get all data for this electrode
+  electrodeData <- allPowerData %>%
+    filter(ElectrodeID == levels(ElectrodeID)[thisElectrode]) %>%
+    select(-ElectrodeID) 
+  
+  for (thisFreqBand in 1:nlevels(allPowerData$FrequencyBand)) {
+    
+    # Filter data for this frequency band
+    frequencyData <- electrodeData %>%
+      filter(FrequencyBand == levels(FrequencyBand)[thisFreqBand]) %>%
+      select(-FrequencyBand) %>%
+      group_by(TrialNumber, TrialTimeType) %>%
+      summarise(Power = mean(Power))
+    
+    # Cast to wide format
+    frequencyDataWide <- frequencyData %>%
+      dcast(TrialNumber ~ TrialTimeType, value.var = "Power")
+    
+    # Wilcoxon signed-rank tests
+    NTGtFT  <- wilcox.test(frequencyDataWide$NT, frequencyDataWide$FT, alternative = "greater")
+    NTLtFT  <- wilcox.test(frequencyDataWide$NT, frequencyDataWide$FT, alternative = "less")
+    
+    # Add to summary dataframe
+    mannWhitneyResults[thisRow, ]     <- c(levels(allPowerData$ElectrodeID)[thisElectrode], 
+                                      levels(allPowerData$FrequencyBand)[thisFreqBand], 
+                                      "NT > FT", 
+                                      NTGtFT$p.value)
+    mannWhitneyResults[thisRow + 1, ] <- c(levels(allPowerData$ElectrodeID)[thisElectrode], 
+                                      levels(allPowerData$FrequencyBand)[thisFreqBand], 
+                                      "NT < FT", 
+                                      NTLtFT$p.value)
+    thisRow <- thisRow + 2
+    
+  } # end thisFreqBand
+  
+} # end thisElectrode
+
+
+# Summarize significant wilcoxon results ----------------------------------
+
+# Reorder frequency band levels
+freqBandOrder <- c("Delta", "Theta", "Alpha", "Beta", "Gamma")
+mannWhitneyResults$FrequencyBand <- factor(mannWhitneyResults$FrequencyBand, levels = freqBandOrder)
+
+# Get the counts of the significant results
+mannWhitneySigResults <- mannWhitneyResults %>%
+  filter(P < 0.05) %>%
+  group_by(FrequencyBand, Contrast) %>%
+  summarise(Count = n())
+
+# Perform binomial test to determine whether counts are higher than expected by chance
+binomP <- mannWhitneySigResults %>%
+  rowwise() %>%
+  do(BinomialTestP = binom.test(.$Count, 
+                                nlevels(allPowerData$ElectrodeID), 
+                                p = 0.05, 
+                                alternative = "greater")$p.value)
+mannWhitneySigResults <- cbind(mannWhitneySigResults, binomP) 
+
+# Make a dataframe for the significance markers
+sigMarkers <- mannWhitneySigResults %>%
+  filter(BinomialTestP < 0.05) %>%
+  mutate(Count = Count + 0.2) 
+
+# Plot the bar charts
+mannWhitneyPlot <- mannWhitneySigResults %>%
+  ggplot(aes(x = Contrast, y = Count)) +
+  geom_bar(stat = "identity") +
+  geom_hline(aes(yintercept = 0.05*nlevels(allPowerData$ElectrodeID), 
+                 color = "red")) +
+  facet_grid(. ~ FrequencyBand) +
+  geom_text(data = sigMarkers, label = "*", size = 18) +
+  theme(strip.text.x = element_text(size = 18),
+        plot.title = element_text(size = 24, vjust = 2),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 18),
+        axis.text.x = element_text(size = 18),
+        axis.text.y = element_text(size = 18)) +
+  ggtitle("Frequency of Significant Differences in Z-scored log(Power) by Frequency Band")
+mannWhitneyPlot
+```

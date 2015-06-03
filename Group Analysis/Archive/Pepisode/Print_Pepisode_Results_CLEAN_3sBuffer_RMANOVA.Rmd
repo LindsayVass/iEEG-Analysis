@@ -1,0 +1,419 @@
+---
+title: "Pepisode Two-Way Repeated Measures ANOVA Results"
+author: Lindsay Vass
+date: 26 May 2015
+output: html_document
+---
+
+# Calculation of Pepisode
+
+The cleaned data was submitted to a pepisode analysis which consisted of two 
+parts. In the first part, power at each frequency was estimated at each time
+point of the entire navigation period when subjects were searching for stores.
+This resulted in a distribution of power values at each frequency across the
+experiment. In the second part of the analysis, the script determined for each
+time point whether there was an ongoing oscillation present, defined as power
+that exceeded both an amplitude and duration threshold, as indicated below.
+
+* 31 log-spaced frequencies between 1 Hz and 181 Hz
+* 6 cycle wavelet for power estimation
+* Amplitude threshold = 95% of the distribution
+* Duration threshold = 3 cycles
+
+I then extracted the mean pepisode value for each trial in a series of 
+contiguous time bins that surrounded the teleportation event. These bins were
+defined as follows (t0 = time of teleporter entry):
+
+* -3000 : -2001 ms
+* -2000 : -1001 ms
+* -1000 : 0 ms
+* Time in Teleporter (0 : 1830 ms for short time; 0 : 2830 ms for long time)
+* Exit time : Exit time + 1000 ms
+* Exit time + 1001 ms : Exit time + 2000 ms
+* Exit time + 2001 ms : Exit time + 3000 ms
+
+# Repeated Measures ANOVA and permutation testing
+
+Once the pepisode values were extracted, I submitted them to two sets of 
+two-way repeated measures ANOVAs:
+
+* Space Condition x Timepoint
+* Time Condition x Timepoint
+
+After calculating the F statistics of the observed data, I built a distribution
+of F statistics for each ANOVA in order to calculate the true P value since 
+pepisode values are not normally distributed. The current analysis used 10000
+iterations to build each distribution. In each section below, I plot the data
+from a given frequency band, and display the corresponding F statistics and the
+estimated P values.
+
+``` {r, echo = FALSE, message = FALSE}
+library(dplyr)
+library(ggplot2)
+
+setwd('/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Pepisode/')
+load("All_Subjects_Pepisode_CLEAN_3sBuffer2015-05-22.Rda")
+load("All_Subjects_Pepisode_CLEAN_3sBuffer_Two_Way_RMANOVA_2015-05-26.Rda")
+
+# Set up data by TIMEPOINT ---------------------------------------------------
+meanByTimePoint <- allPepisodeData %>%
+  filter(is.na(Pepisode) == FALSE) %>% # UCDMC15 TeleporterB is NaN for NSFT
+  select(TimePoint,Pepisode:FrequencyBand) %>%
+  group_by(ElectrodeID, FrequencyBand,TimePoint) 
+
+# We want our error bars to ultimately reflect the within-subject variability rather than between-subject
+# To do this, we'll use the methods in Cousineau (2005) Tutorials in Quantitative Methods for Psychology and
+# Morey (2008) [Same Journal], which corrects the bias in the Cousineau method
+# Essentially, we will calculate normalized values for each observation, in which we take the original observation,
+# subtract the electrode mean, add the group mean, and correct for the # of conditions
+
+# calculate the mean across conditions for each electrode for each frequency
+elecMean <- meanByTimePoint %>%
+  group_by(ElectrodeID, FrequencyBand) %>%
+  summarise(EMean = mean(Pepisode))
+
+# calculate the mean across conditions across electrodes for each frequency
+groupMean <- meanByTimePoint %>%
+  group_by(FrequencyBand) %>%
+  summarise(GMean = mean(Pepisode))
+
+# now we'll normalize the observations by taking into account the electrode and group means
+# to do this, we'll need to join our tables together
+normByTimePoint <- inner_join(meanByTimePoint, elecMean)
+normByTimePoint <- inner_join(normByTimePoint, groupMean) %>%
+  mutate(NormPepisode = Pepisode - EMean + GMean) %>%
+  filter(is.na(Pepisode) == FALSE) %>%
+  group_by(FrequencyBand, TimePoint) %>%
+  summarise(NormVar = var(NormPepisode)) %>%
+  mutate(NormVarUnbias = NormVar * (nlevels(allPepisodeData$TimePoint)/(nlevels(allPepisodeData$TimePoint) - 1)),
+         NormSEM = (sqrt(NormVarUnbias) / sqrt(nlevels(allPepisodeData$ElectrodeID)))) %>%
+  select(FrequencyBand, TimePoint, NormSEM)
+
+# now summarise the original data and join with the normalized SEM
+meanByTimePoint <- meanByTimePoint %>%
+  group_by(FrequencyBand, TimePoint) %>%
+  summarise(Pepisode = mean(Pepisode)) %>%
+  inner_join(normByTimePoint)
+
+# Summarize the data by SPACE condition ---------------------------------------
+
+meanBySpace <- allPepisodeData %>%
+  filter(is.na(Pepisode) == FALSE) %>% # UCDMC15 TeleporterB is NaN for EDF1 NSFT
+  select(TrialSpaceType,TimePoint,Pepisode:FrequencyBand) %>%
+  group_by(ElectrodeID, FrequencyBand,TrialSpaceType) 
+
+# We want our error bars to ultimately reflect the within-subject variability rather than between-subject
+# To do this, we'll use the methods in Cousineau (2005) Tutorials in Quantitative Methods for Psychology and
+# Morey (2008) [Same Journal], which corrects the bias in the Cousineau method
+# Essentially, we will calculate normalized values for each observation, in which we take the original observation,
+# subtract the electrode mean, add the group mean, and correct for the # of conditions
+
+# calculate the mean across conditions for each electrode for each frequency
+elecMean <- meanBySpace %>%
+  group_by(ElectrodeID, FrequencyBand, TimePoint, TrialSpaceType) %>%
+  summarise(EMean = mean(Pepisode))
+
+# calculate the mean across conditions across electrodes for each frequency
+groupMean <- meanBySpace %>%
+  group_by(FrequencyBand, TimePoint, TrialSpaceType) %>%
+  summarise(GMean = mean(Pepisode))
+
+# now we'll normalize the observations by taking into account the electrode and group means
+# to do this, we'll need to join our tables together
+normBySpace <- inner_join(meanBySpace, elecMean)
+normBySpace <- inner_join(normBySpace, groupMean) %>%
+  mutate(NormPepisode = Pepisode - EMean + GMean) %>%
+  group_by(FrequencyBand, TimePoint, TrialSpaceType) %>%
+  summarise(NormVar = var(NormPepisode)) %>%
+  mutate(NormVarUnbias = NormVar * (nlevels(allPepisodeData$TrialSpaceType))/(nlevels(allPepisodeData$TrialSpaceType) - 1),
+         NormSEM = (sqrt(NormVarUnbias) / sqrt(nlevels(allPepisodeData$ElectrodeID)))) %>%
+  select(FrequencyBand, TimePoint, TrialSpaceType, NormSEM)
+
+# now summarise the original data and join with the normalized SEM
+meanBySpace <- meanBySpace %>%
+  group_by(FrequencyBand, TrialSpaceType, TimePoint) %>%
+  summarise(Pepisode = mean(Pepisode)) %>%
+  inner_join(normByTimePoint)
+
+# Summarize the data by TIME condition ----------------------------------------
+meanByTime <- allPepisodeData %>%
+  filter(is.na(Pepisode) == FALSE) %>% # UCDMC15 TeleporterB is NaN for EDF1 NSFT
+  select(TrialTimeType,TimePoint,Pepisode:FrequencyBand) %>%
+  group_by(ElectrodeID, FrequencyBand,TrialTimeType) 
+
+# We want our error bars to ultimately reflect the within-subject variability rather than between-subject
+# To do this, we'll use the methods in Cousineau (2005) Tutorials in Quantitative Methods for Psychology and
+# Morey (2008) [Same Journal], which corrects the bias in the Cousineau method
+# Essentially, we will calculate normalized values for each observation, in which we take the original observation,
+# subtract the electrode mean, add the group mean, and correct for the # of conditions
+
+# calculate the mean across conditions for each electrode for each frequency
+elecMean <- meanByTime %>%
+  group_by(ElectrodeID, FrequencyBand, TimePoint, TrialTimeType) %>%
+  summarise(EMean = mean(Pepisode))
+
+# calculate the mean across conditions across electrodes for each frequency
+groupMean <- meanByTime %>%
+  group_by(FrequencyBand, TimePoint, TrialTimeType) %>%
+  summarise(GMean = mean(Pepisode))
+
+# now we'll normalize the observations by taking into account the electrode and group means
+# to do this, we'll need to join our tables together
+normByTime <- inner_join(meanByTime, elecMean)
+normByTime <- inner_join(normByTime, groupMean) %>%
+  mutate(NormPepisode = Pepisode - EMean + GMean) %>%
+  group_by(FrequencyBand, TimePoint, TrialTimeType) %>%
+  summarise(NormVar = var(NormPepisode)) %>%
+  mutate(NormVarUnbias = NormVar * (nlevels(allPepisodeData$TrialTimeType))/(nlevels(allPepisodeData$TrialTimeType) - 1),
+         NormSEM = (sqrt(NormVarUnbias) / sqrt(nlevels(allPepisodeData$ElectrodeID)))) %>%
+  select(FrequencyBand, TimePoint, TrialTimeType, NormSEM)
+
+# now summarise the original data and join with the normalized SEM
+meanByTime <- meanByTime %>%
+  group_by(FrequencyBand, TrialTimeType, TimePoint) %>%
+  summarise(Pepisode = mean(Pepisode)) %>%
+  inner_join(normByTimePoint)
+```
+
+# Delta
+
+## Space x Timepoint
+
+```{r, echo = FALSE}
+
+# Plot the data
+meanBySpace %>%
+  filter(FrequencyBand == "Delta") %>%
+  ggplot(aes(x = TimePoint,
+             y = Pepisode,
+             ymin = Pepisode - NormSEM,
+             ymax = Pepisode + NormSEM,
+             color = TrialSpaceType)) +
+  geom_point(size = 4) +
+  geom_pointrange() +
+  ggtitle("Pepisode: Space x Timepoint")
+
+# Output the stats
+anovaResults %>% 
+  filter(FreqBand == "Delta" & ANOVA == "SpaceXTimepoint") %>% 
+  select(Contrast:Pcorr)
+
+```
+
+## Time x Timepoint
+
+```{r, echo = FALSE}
+
+# Plot the data
+meanByTime %>%
+  filter(FrequencyBand == "Delta") %>%
+  ggplot(aes(x = TimePoint,
+             y = Pepisode,
+             ymin = Pepisode - NormSEM,
+             ymax = Pepisode + NormSEM,
+             color = TrialTimeType)) +
+  geom_point(size = 4) +
+  geom_pointrange() +
+  ggtitle("Pepisode: Time x Timepoint")
+
+# Output the stats
+anovaResults %>% 
+  filter(FreqBand == "Delta" & ANOVA == "TimeXTimepoint") %>% 
+  select(Contrast:Pcorr)
+
+```
+
+# Theta
+
+## Space x Timepoint
+
+```{r, echo = FALSE}
+
+# Plot the data
+meanBySpace %>%
+  filter(FrequencyBand == "Theta") %>%
+  ggplot(aes(x = TimePoint,
+             y = Pepisode,
+             ymin = Pepisode - NormSEM,
+             ymax = Pepisode + NormSEM,
+             color = TrialSpaceType)) +
+  geom_point(size = 4) +
+  geom_pointrange() +
+  ggtitle("Pepisode: Space x Timepoint")
+
+# Output the stats
+anovaResults %>% 
+  filter(FreqBand == "Theta" & ANOVA == "SpaceXTimepoint") %>% 
+  select(Contrast:Pcorr)
+
+```
+
+## Time x Timepoint
+
+```{r, echo = FALSE}
+
+# Plot the data
+meanByTime %>%
+  filter(FrequencyBand == "Theta") %>%
+  ggplot(aes(x = TimePoint,
+             y = Pepisode,
+             ymin = Pepisode - NormSEM,
+             ymax = Pepisode + NormSEM,
+             color = TrialTimeType)) +
+  geom_point(size = 4) +
+  geom_pointrange() +
+  ggtitle("Pepisode: Time x Timepoint")
+
+# Output the stats
+anovaResults %>% 
+  filter(FreqBand == "Theta" & ANOVA == "TimeXTimepoint") %>% 
+  select(Contrast:Pcorr)
+
+```
+
+# Alpha
+
+## Space x Timepoint
+
+```{r, echo = FALSE}
+
+# Plot the data
+meanBySpace %>%
+  filter(FrequencyBand == "Alpha") %>%
+  ggplot(aes(x = TimePoint,
+             y = Pepisode,
+             ymin = Pepisode - NormSEM,
+             ymax = Pepisode + NormSEM,
+             color = TrialSpaceType)) +
+  geom_point(size = 4) +
+  geom_pointrange() +
+  ggtitle("Pepisode: Space x Timepoint")
+
+# Output the stats
+anovaResults %>% 
+  filter(FreqBand == "Alpha" & ANOVA == "SpaceXTimepoint") %>% 
+  select(Contrast:Pcorr)
+
+```
+
+## Time x Timepoint
+
+```{r, echo = FALSE}
+
+# Plot the data
+meanByTime %>%
+  filter(FrequencyBand == "Alpha") %>%
+  ggplot(aes(x = TimePoint,
+             y = Pepisode,
+             ymin = Pepisode - NormSEM,
+             ymax = Pepisode + NormSEM,
+             color = TrialTimeType)) +
+  geom_point(size = 4) +
+  geom_pointrange() +
+  ggtitle("Pepisode: Time x Timepoint")
+
+# Output the stats
+anovaResults %>% 
+  filter(FreqBand == "Alpha" & ANOVA == "TimeXTimepoint") %>% 
+  select(Contrast:Pcorr)
+
+```
+
+# Beta
+
+## Space x Timepoint
+
+```{r, echo = FALSE}
+
+# Plot the data
+meanBySpace %>%
+  filter(FrequencyBand == "Beta") %>%
+  ggplot(aes(x = TimePoint,
+             y = Pepisode,
+             ymin = Pepisode - NormSEM,
+             ymax = Pepisode + NormSEM,
+             color = TrialSpaceType)) +
+  geom_point(size = 4) +
+  geom_pointrange() +
+  ggtitle("Pepisode: Space x Timepoint")
+
+# Output the stats
+anovaResults %>% 
+  filter(FreqBand == "Beta" & ANOVA == "SpaceXTimepoint") %>% 
+  select(Contrast:Pcorr)
+
+```
+
+## Time x Timepoint
+
+```{r, echo = FALSE}
+
+# Plot the data
+meanByTime %>%
+  filter(FrequencyBand == "Beta") %>%
+  ggplot(aes(x = TimePoint,
+             y = Pepisode,
+             ymin = Pepisode - NormSEM,
+             ymax = Pepisode + NormSEM,
+             color = TrialTimeType)) +
+  geom_point(size = 4) +
+  geom_pointrange() +
+  ggtitle("Pepisode: Time x Timepoint")
+
+# Output the stats
+anovaResults %>% 
+  filter(FreqBand == "Beta" & ANOVA == "TimeXTimepoint") %>% 
+  select(Contrast:Pcorr)
+
+```
+
+# Gamma
+
+## Space x Timepoint
+
+```{r, echo = FALSE}
+
+# Plot the data
+meanBySpace %>%
+  filter(FrequencyBand == "Gamma") %>%
+  ggplot(aes(x = TimePoint,
+             y = Pepisode,
+             ymin = Pepisode - NormSEM,
+             ymax = Pepisode + NormSEM,
+             color = TrialSpaceType)) +
+  geom_point(size = 4) +
+  geom_pointrange() +
+  ggtitle("Pepisode: Space x Timepoint")
+
+# Output the stats
+anovaResults %>% 
+  filter(FreqBand == "Gamma" & ANOVA == "SpaceXTimepoint") %>% 
+  select(Contrast:Pcorr)
+
+```
+
+## Time x Timepoint
+
+```{r, echo = FALSE}
+
+# Plot the data
+meanByTime %>%
+  filter(FrequencyBand == "Gamma") %>%
+  ggplot(aes(x = TimePoint,
+             y = Pepisode,
+             ymin = Pepisode - NormSEM,
+             ymax = Pepisode + NormSEM,
+             color = TrialTimeType)) +
+  geom_point(size = 4) +
+  geom_pointrange() +
+  ggtitle("Pepisode: Time x Timepoint")
+
+# Output the stats
+anovaResults %>% 
+  filter(FreqBand == "Gamma" & ANOVA == "TimeXTimepoint") %>% 
+  select(Contrast:Pcorr)
+
+```
+
+
+
