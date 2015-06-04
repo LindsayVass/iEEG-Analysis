@@ -47,12 +47,17 @@ end
 
 for thisSubject = 1:size(sessionInfo, 2)
     
+    fprintf('\n\n-------------------------------------------------------\n\n');
+    fprintf([sessionInfo(thisSubject).subjectID '\n']);
+    
     for thisSession = 1:size(sessionInfo(thisSubject).teleporter, 2)
         
         % Extract session-specific data from structure
         subjectID  = sessionInfo(thisSubject).subjectID;
         teleporter = sessionInfo(thisSubject).teleporter{thisSession};
         chanList   = sessionInfo(thisSubject).chanList;
+        
+        fprintf([teleporter '\n\n']);
         
         % Set subject directory
         subjectDir = ['/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/' subjectID '/'];

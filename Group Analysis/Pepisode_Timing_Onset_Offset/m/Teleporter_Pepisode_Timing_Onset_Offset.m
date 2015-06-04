@@ -106,6 +106,8 @@ depthNames = unique(cellfun(@(s) s(1:3), chanList, 'UniformOutput', false));
 %% Perform analysis
 for thisDepth = 1:length(depthNames)
     
+    fprintf(['Loading electrode ' depthNames{thisDepth} '\n\n']);
+    
     % make a cell array of the EEG dataset paths
     eegList = cell(length(cleanedUnepochedPrefix), 1);
     for thisEEG = 1:length(cleanedUnepochedPrefix)
@@ -129,6 +131,8 @@ for thisDepth = 1:length(depthNames)
         % Load the epoched EEG data
         epochedEEGPath = [cleanedEpochedPrefix{1} depthNames{thisDepth} cleanedEpochedSuffix{1}];
         EEG = pop_loadset(epochedEEGPath);
+        
+        fprintf(['\n\nChan ' num2str(thisChan) ': ']);
         
         % Initialize output arrays
         if charRow == 2
@@ -155,8 +159,11 @@ for thisDepth = 1:length(depthNames)
         % Create tables of epoch onsets and offsets
         trialTimesTable = makeTrialTimesTable(EEG, timesNT, timesFT, '1', '2');
         
+        
         % Loop through trials
         for thisTrial = 1:size(trialTimesTable, 1)
+            
+            fprintf([' ' num2str(thisTrial)]);
             
             trialOnsets  = trialTimesTable{thisTrial, 2};
             trialOffsets = trialTimesTable{thisTrial, 3};
@@ -227,6 +234,8 @@ for thisDepth = 1:length(depthNames)
             end % thisTimePoint
             
         end % thisTrial
+        
+        fprintf('\n\n');
         
     end % thisChan
     
