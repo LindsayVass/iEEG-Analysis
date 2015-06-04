@@ -243,9 +243,11 @@ end % thisDepth
 
 
 % Write out the summary cell array to file
-fprintf('\n\nWriting output to file...\n');
+fprintf('\n\nWriting observation characteristics to file...');
 celltocsv([analysisDir 'csv/' saveFile '_observation_characteristics.csv'], observationCharacteristics, 1);
+fprintf('\n\nWriting NT data to file...');
 celltocsv([analysisDir 'csv/' saveFile '_NT_data.csv'], dataNT, 1);
+fprintf('\n\nWriting FT data to file...\n');
 celltocsv([analysisDir 'csv/' saveFile '_FT_data.csv'], dataFT, 1);
 % save([analysisDir 'mat/' saveFile '_observation_characteristics.mat'], 'observationCharacteristics');
 % save([analysisDir 'mat/' saveFile '_NT_data.mat'], 'dataNT');
