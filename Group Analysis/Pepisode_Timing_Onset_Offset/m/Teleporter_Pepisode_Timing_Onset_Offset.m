@@ -244,9 +244,9 @@ end % thisDepth
 
 % Write out the summary cell array to file
 fprintf('\n\nWriting output to file...\n');
-dlmcell([analysisDir 'csv/' saveFile '_observation_characteristics.csv'], observationCharacteristics, 'delimiter', ',');
-dlmcell([analysisDir 'csv/' saveFile '_NT_data.csv'], dataNT, 'delimiter', ',');
-dlmcell([analysisDir 'csv/' saveFile '_FT_data.csv'], dataFT, 'delimiter', ',');
+cell2csv([analysisDir 'csv/' saveFile '_observation_characteristics.csv'], observationCharacteristics);
+cell2csv([analysisDir 'csv/' saveFile '_NT_data.csv'], dataNT);
+cell2csv([analysisDir 'csv/' saveFile '_FT_data.csv'], dataFT);
 save([analysisDir 'mat/' saveFile '_observation_characteristics.mat'], 'observationCharacteristics');
 save([analysisDir 'mat/' saveFile '_NT_data.mat'], 'dataNT');
 save([analysisDir 'mat/' saveFile '_FT_data.mat'], 'dataFT');
