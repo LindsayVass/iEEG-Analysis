@@ -205,24 +205,24 @@ for thisDepth = 1:length(depthNames)
                     
                     if strcmpi('NT', timeType) == 1
                         
-                        dataNT(ntRow, 1:2)       = {observationID, 'Episode'};
-                        dataNT(ntRow, 3:end)     = num2cell(episodeMatrix(thisFreq, :));
-                        dataNT(ntRow + 1, 1:2)   = {observationID, 'Onset'};
-                        dataNT(ntRow + 1, 3:end) = num2cell(onsetMatrix(thisFreq, :));
-                        dataNT(ntRow + 2, 1:2)   = {observationID, 'Offset'};
-                        dataNT(ntRow + 2, 3:end) = num2cell(offsetMatrix(thisFreq, :));
+                        outputVectors = cat(1, episodeMatrix(thisFreq, :), onsetMatrix(thisFreq, :), offsetMatrix(thisFreq, :));
+                        
+                        dataNT(ntRow:ntRow + 2, 1:2) = {observationID, 'Episode'; ...
+                                                        observationID, 'Onset'; ...
+                                                        observationID, 'Offset'};
+                        dataNT(ntRow:ntRow + 2, 3:end) = num2cell(outputVectors);
                         
                         ntRow = ntRow + 3;
                         
                     else
                         
-                        dataFT(ftRow, 1:2)       = {observationID, 'Episode'};
-                        dataFT(ftRow, 3:end)     = num2cell(episodeMatrix(thisFreq, :));
-                        dataFT(ftRow + 1, 1:2)   = {observationID, 'Onset'};
-                        dataFT(ftRow + 1, 3:end) = num2cell(onsetMatrix(thisFreq, :));
-                        dataFT(ftRow + 2, 1:2)   = {observationID, 'Offset'};
-                        dataFT(ftRow + 2, 3:end) = num2cell(offsetMatrix(thisFreq, :));
+                        outputVectors = cat(1, episodeMatrix(thisFreq, :), onsetMatrix(thisFreq, :), offsetMatrix(thisFreq, :));
                         
+                        dataFT(ftRow:ftRow + 2, 1:2) = {observationID, 'Episode'; ...
+                                                        observationID, 'Onset'; ...
+                                                        observationID, 'Offset'};
+                        dataFT(ftRow:ftRow + 2, 3:end) = num2cell(outputVectors);
+
                         ftRow = ftRow + 3;
                         
                     end
@@ -237,18 +237,26 @@ for thisDepth = 1:length(depthNames)
         
         fprintf('\n\n');
         
+        % Write out the summary cell array to file
+        fprintf('\n\nWriting observation characteristics to file...');
+        celltocsv([analysisDir 'csv/' saveFile '_' chanNames{thisChan} '_observation_characteristics.csv'], observationCharacteristics, 1);
+        fprintf('\n\nWriting NT data to file...');
+        celltocsv([analysisDir 'csv/' saveFile '_' chanNames{thisChan} '_NT_data.csv'], dataNT, 1);
+        fprintf('\n\nWriting FT data to file...\n');
+        celltocsv([analysisDir 'csv/' saveFile '_' chanNames{thisChan} '_FT_data.csv'], dataFT, 1);
+        
     end % thisChan
     
 end % thisDepth
 
 
 % Write out the summary cell array to file
-fprintf('\n\nWriting observation characteristics to file...');
-celltocsv([analysisDir 'csv/' saveFile '_observation_characteristics.csv'], observationCharacteristics, 1);
-fprintf('\n\nWriting NT data to file...');
-celltocsv([analysisDir 'csv/' saveFile '_NT_data.csv'], dataNT, 1);
-fprintf('\n\nWriting FT data to file...\n');
-celltocsv([analysisDir 'csv/' saveFile '_FT_data.csv'], dataFT, 1);
+% fprintf('\n\nWriting observation characteristics to file...');
+% celltocsv([analysisDir 'csv/' saveFile '_observation_characteristics.csv'], observationCharacteristics, 1);
+% fprintf('\n\nWriting NT data to file...');
+% celltocsv([analysisDir 'csv/' saveFile '_NT_data.csv'], dataNT, 1);
+% fprintf('\n\nWriting FT data to file...\n');
+% celltocsv([analysisDir 'csv/' saveFile '_FT_data.csv'], dataFT, 1);
 % save([analysisDir 'mat/' saveFile '_observation_characteristics.mat'], 'observationCharacteristics');
 % save([analysisDir 'mat/' saveFile '_NT_data.mat'], 'dataNT');
 % save([analysisDir 'mat/' saveFile '_FT_data.mat'], 'dataFT');
