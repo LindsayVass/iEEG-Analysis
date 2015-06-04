@@ -85,19 +85,7 @@ if ~exist([analysisDir 'csv/'], 'dir')
     system(['mkdir ' analysisDirNoSpace 'csv/']);
 end
 
-%% Initialize the output cell arrays
 
-% This array will hold the details about each observation
-observationCharacteristics      = cell(1,10);
-observationCharacteristics(1,:) = {'ObservationID','SubjectID','Teleporter','Electrode','TrialNumber','TrialSpaceType','TrialTimeType','TrialType','TimePoint','Frequency'};
-
-% our other output arrays will be dataNT and dataFT, but we won't know how
-% wide they are until we run the first subject's analysis, so we'll create
-% them then
-
-charRow = 2;
-ntRow = 2;
-ftRow = 2;
 observationID = 1;
 
 %% Get depth names from chanList
@@ -119,6 +107,20 @@ for thisDepth = 1:length(depthNames)
     chanNames = findChansOnThisElectrode(chanList, depthNames{thisDepth});
     
     for thisChan = 1:length(chanNames)
+        
+        %% Initialize the output cell arrays
+        
+        % This array will hold the details about each observation
+        observationCharacteristics      = cell(1,10);
+        observationCharacteristics(1,:) = {'ObservationID','SubjectID','Teleporter','Electrode','TrialNumber','TrialSpaceType','TrialTimeType','TrialType','TimePoint','Frequency'};
+        
+        % our other output arrays will be dataNT and dataFT, but we won't know how
+        % wide they are until we run the first subject's analysis, so we'll create
+        % them then
+        
+        charRow = 2;
+        ntRow = 2;
+        ftRow = 2;
         
         % Calculate power distribution if it doesn't already exist
         powerDistSaveFile = [subjectDir 'Mat Files/Pepisode/Power Distributions/' subjectID '_' teleporter '_' chanNames{thisChan} '_power_distribution.mat'];
