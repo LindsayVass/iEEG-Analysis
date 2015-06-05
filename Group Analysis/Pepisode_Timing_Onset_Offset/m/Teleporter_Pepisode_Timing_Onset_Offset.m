@@ -77,10 +77,6 @@ if ~exist([analysisDir], 'dir')
     system(['mkdir ' analysisDirNoSpace]);
 end
 
-if ~exist([analysisDir 'mat/'], 'dir')
-    system(['mkdir ' analysisDirNoSpace 'mat/']);
-end
-
 if ~exist([analysisDir 'csv/'], 'dir')
     system(['mkdir ' analysisDirNoSpace 'csv/']);
 end

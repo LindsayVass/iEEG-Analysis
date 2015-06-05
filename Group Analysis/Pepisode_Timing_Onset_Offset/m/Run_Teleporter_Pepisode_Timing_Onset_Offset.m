@@ -1,6 +1,8 @@
 % This script will run the function "Teleporter_Epoched_Pepisode" for each
 % session for each subject.
 %
+% This takes ~ 3 hours to run for UCDMC13-15.
+%
 % Lindsay Vass
 % 2 June 2015
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
