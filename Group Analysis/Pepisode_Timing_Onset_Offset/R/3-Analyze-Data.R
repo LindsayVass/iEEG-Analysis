@@ -14,7 +14,8 @@ library(reshape2)
 
 # Within-electrode analysis -----------------------------------------------
 
-summaryData <- data.frame()
+episodeData <- data.frame()
+onOffData <- data.frame()
 
 for (thisElectrode in 1:nlevels(cleanCharData$ElectrodeID)) {
   
@@ -30,6 +31,7 @@ for (thisElectrode in 1:nlevels(cleanCharData$ElectrodeID)) {
              "ObservationID", 
              "TrialNumber", 
              "TrialTimeType", 
+             "Frequency",
              "FrequencyBand", 
              "ObservationType"),
            variable.name = "Time",
@@ -44,6 +46,7 @@ for (thisElectrode in 1:nlevels(cleanCharData$ElectrodeID)) {
              "ObservationID", 
              "TrialNumber", 
              "TrialTimeType", 
+             "Frequency",
              "FrequencyBand", 
              "ObservationType"),
            variable.name = "Time",
@@ -56,16 +59,27 @@ for (thisElectrode in 1:nlevels(cleanCharData$ElectrodeID)) {
     thisData$Time <- sub("^X", "", thisData$Time)
     thisData$Time <- as.numeric(thisData$Time)
     
-    # Get the mean and SEM for each time point
-    tempData <- thisData %>%
+    # For episodes, get the mean and SEM for each time point
+    tempEpisodeData <- thisData %>%
+      filter(ObservationType == "Episode") %>%
       group_by(ElectrodeID, FrequencyBand, TrialTimeType, Time, ObservationType) %>%
       summarise(Mean = mean(Value), SEM = sd(Value) / sqrt(n()))
     
-    summaryData <- rbind(summaryData, tempData)
+    episodeData <- rbind(episodeData, tempEpisodeData)
+    
+    # For onsets and offsets, keep only the timepoints with 1
+    tempOnOffData <- thisData %>%
+      filter(ObservationType != "Episode") %>%
+      select(-ObservationID) %>%
+      group_by(ElectrodeID, Frequency, TrialTimeType, Time, ObservationType) %>%
+      filter(Value == 1) %>%
+      arrange(TrialNumber)
+    
+    onOffData <- rbind(onOffData, tempOnOffData)
   }
   
 }
 
 # Save
-save(file = 'Rda/allAnalyzedData.Rda', list = "summaryData")
+save(file = 'Rda/allAnalyzedData.Rda', list = c("episodeData", "onOffData"))
 
