@@ -26,7 +26,7 @@ freqBandBreaks <- c(0, 4, 8, 12, 30, 182)
 freqBandNames  <- c("Delta", "Theta", "Alpha", "Beta", "Gamma")
 cleanCharData <- cleanCharData %>%
   mutate(FrequencyBand = cut(Frequency, freqBandBreaks, labels = freqBandNames)) %>%
-  select(ElectrodeID, ObservationID:TrialTimeType, FrequencyBand)
+  select(ElectrodeID, ObservationID:TrialTimeType, Frequency, FrequencyBand)
 
 # Put our conditions in order
 timeOrder <- c('NT','FT')
