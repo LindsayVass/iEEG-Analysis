@@ -58,7 +58,7 @@ for (thisElectrode in 1:nlevels(cleanCharData$ElectrodeID)) {
     
     # Get the mean and SEM for each time point
     tempData <- thisData %>%
-      group_by(TrialTimeType, Time, ObservationType) %>%
+      group_by(ElectrodeID, FrequencyBand, TrialTimeType, Time, ObservationType) %>%
       summarise(Mean = mean(Value), SEM = sd(Value) / sqrt(n()))
     
     summaryData <- rbind(summaryData, tempData)
