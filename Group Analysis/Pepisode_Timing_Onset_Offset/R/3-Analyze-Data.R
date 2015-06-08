@@ -14,42 +14,58 @@ library(reshape2)
 
 # Within-electrode analysis -----------------------------------------------
 
-frequencyNt <- cleanCharData %>%
-  group_by(TrialTimeType) %>%
-  inner_join(cleanNtData) %>%
-  group_by(ObservationType) %>%
-  melt(c("ElectrodeID", 
-         "ObservationID", 
-         "TrialNumber", 
-         "TrialTimeType", 
-         "FrequencyBand", 
-         "ObservationType"),
-       variable.name = "Time",
-       value.name = "Value")
+summaryData <- data.frame()
 
-frequencyFt <- cleanCharData %>%
-  group_by(TrialTimeType) %>%
-  inner_join(cleanFtData) %>%
-  group_by(ObservationType) %>%
-  melt(c("ElectrodeID", 
-         "ObservationID", 
-         "TrialNumber", 
-         "TrialTimeType", 
-         "FrequencyBand", 
-         "ObservationType"),
-       variable.name = "Time",
-       value.name = "Value")
+for (thisElectrode in 1:nlevels(cleanCharData$ElectrodeID)) {
+  
+  for (thisFrequency in 1:nlevels(cleanCharData$FrequencyBand)) {
+    
+    # use joins to get the data for this electrode/frequency
+    ntData <- cleanCharData %>%
+      filter(ElectrodeID == levels(cleanCharData$ElectrodeID)[thisElectrode] &
+             FrequencyBand == levels(cleanCharData$FrequencyBand)[thisFrequency]) %>%
+      inner_join(cleanNtData) %>%
+      group_by(ObservationType) %>%
+      melt(c("ElectrodeID", 
+             "ObservationID", 
+             "TrialNumber", 
+             "TrialTimeType", 
+             "FrequencyBand", 
+             "ObservationType"),
+           variable.name = "Time",
+           value.name = "Value")
+    
+    ftData <- cleanCharData %>%
+      filter(ElectrodeID == levels(cleanCharData$ElectrodeID)[thisElectrode] &
+             FrequencyBand == levels(cleanCharData$FrequencyBand)[thisFrequency]) %>%
+      inner_join(cleanFtData) %>%
+      group_by(ObservationType) %>%
+      melt(c("ElectrodeID", 
+             "ObservationID", 
+             "TrialNumber", 
+             "TrialTimeType", 
+             "FrequencyBand", 
+             "ObservationType"),
+           variable.name = "Time",
+           value.name = "Value")
+    
+    # R added X to positive timepoints and X. to negative timepoints, so fix that
+    # now that they're no longer variable names
+    thisData <- rbind(ntData, ftData)
+    thisData$Time <- sub("^X\\.", "-", thisData$Time)
+    thisData$Time <- sub("^X", "", thisData$Time)
+    thisData$Time <- as.numeric(thisData$Time)
+    
+    # Get the mean and SEM for each time point
+    tempData <- thisData %>%
+      group_by(TrialTimeType, Time, ObservationType) %>%
+      summarise(Mean = mean(Value), SEM = sd(Value) / sqrt(n()))
+    
+    summaryData <- rbind(summaryData, tempData)
+  }
+  
+}
 
-# R added X to positive timepoints and X. to negative timepoints, so fix that
-# now that they're no longer variable names
-frequencyData <- rbind(frequencyNt, frequencyFt)
-frequencyData$Time <- sub("X0", "0", frequencyData$Time)
-frequencyData$Time <- sub("X.", "-", frequencyData$Time)
-frequencyData$Time <- sub("X", "", frequencyData$Time)
-frequencyData$Time <- as.numeric(frequencyData$Time)
-
-# Get the mean and SEM for each time point
-summaryData <- frequencyData %>%
-  group_by(ElectrodeID, FrequencyBand, TrialTimeType, Time, ObservationType) %>%
-  summarise(Mean = mean(Value), SEM = sd(Value) / sqrt(n()))
+# Save
+save(file = 'Rda/allAnalyzedData.Rda', list = "summaryData")
 
