@@ -23,7 +23,7 @@ linePlot <- lineData %>%
   geom_ribbon(color = "lightskyblue", fill = "lightskyblue") +
   geom_line(color = "steelblue4") +
   geom_vline(aes(xintercept = x, linetype = "dashed"), timepointMarkers) +
-  facet_grid(FrequencyBand ~ TrialTimeType) +
+  facet_grid(FrequencyBand ~ TrialTimeType, scales = "free_x") +
   theme_few() +
   labs(y = "Mean Pepisode", title = "Pepisode Over Time") +
   theme(text = element_text(size = 24),
@@ -46,7 +46,7 @@ for (thisFrequency in 1:nlevels(episodeData$FrequencyBand)) {
     geom_vline(xintercept = 1830) +
     facet_wrap(~ElectrodeID) +
     theme_few() +
-    labs(y = "Mean Pepisode", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Over Time")) +
+    labs(y = "Mean Pepisode", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Over Time (NT Trials)")) +
     theme(text = element_text(size = 24),
           axis.text = element_text(size = 18),
           axis.title.x = element_text(vjust = -0.5),
@@ -68,7 +68,7 @@ for (thisFrequency in 1:nlevels(episodeData$FrequencyBand)) {
     geom_vline(xintercept = 2830) +
     facet_wrap(~ElectrodeID) +
     theme_few() +
-    labs(y = "Mean Pepisode", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Over Time")) +
+    labs(y = "Mean Pepisode", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Over Time (FT Trials)")) +
     theme(text = element_text(size = 24),
           axis.text = element_text(size = 18),
           axis.title.x = element_text(vjust = -0.5),
@@ -112,7 +112,7 @@ for (thisFrequency in 1:nlevels(episodeData$FrequencyBand)) {
     theme_few() +
     theme(text = element_text(size = 24),
           panel.margin = unit(1, "lines")) +
-    labs(y = "# of Episodes", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Onset Times"))
+    labs(y = "# of Episodes", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Onset Times (NT Trials)"))
   ggsave(filename =  paste0('Figures/', levels(episodeData$FrequencyBand)[thisFrequency], '_NT_Electrodewise_Pepisode_Onset_Times_Histogram.png'),
          plot = onsetNtData,
          width = 30,
@@ -131,7 +131,7 @@ for (thisFrequency in 1:nlevels(episodeData$FrequencyBand)) {
     theme_few() +
     theme(text = element_text(size = 24),
           panel.margin = unit(1, "lines")) +
-    labs(y = "# of Episodes", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Onset Times"))
+    labs(y = "# of Episodes", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Onset Times (FT Trials)"))
   ggsave(filename =  paste0('Figures/', levels(episodeData$FrequencyBand)[thisFrequency], '_FT_Electrodewise_Pepisode_Onset_Times_Histogram.png'),
          plot = onsetFtData,
          width = 30,
@@ -171,7 +171,7 @@ for (thisFrequency in 1:nlevels(episodeData$FrequencyBand)) {
     theme_few() +
     theme(text = element_text(size = 24),
           panel.margin = unit(1, "lines")) +
-    labs(y = "# of Episodes", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Offset Times"))
+    labs(y = "# of Episodes", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Offset Times (NT Trials)"))
   ggsave(filename =  paste0('Figures/', levels(episodeData$FrequencyBand)[thisFrequency], '_NT_Electrodewise_Pepisode_Offset_Times_Histogram.png'),
          plot = offsetNtData,
          width = 30,
@@ -190,9 +190,9 @@ for (thisFrequency in 1:nlevels(episodeData$FrequencyBand)) {
     theme_few() +
     theme(text = element_text(size = 24),
           panel.margin = unit(1, "lines")) +
-    labs(y = "# of Episodes", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Offset Times"))
+    labs(y = "# of Episodes", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Offset Times (FT Trials)"))
   ggsave(filename =  paste0('Figures/', levels(episodeData$FrequencyBand)[thisFrequency], '_FT_Electrodewise_Pepisode_Offset_Times_Histogram.png'),
-         plot = onsetFtData,
+         plot = offsetFtData,
          width = 30,
          height = 15)
   
