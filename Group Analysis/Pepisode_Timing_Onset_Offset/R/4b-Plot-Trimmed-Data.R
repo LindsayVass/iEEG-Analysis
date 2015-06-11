@@ -68,6 +68,46 @@ calcGroupMeanElecMean <- function(dataFrame, elecVar = "ElectrodeID", facetVar1 
   return(dataFrame)
 }
 
+# make histogram of group data
+makeGroupHistogram <- function(inputData, colour, fill, ntBinWidth, ftBinWidth, title, timePointMarkers) {
+  plotData <- inputData %>%
+    ggplot(aes(x = Time)) +
+    stat_bin(data = subset(inputData, TrialTimeType == "NT"),
+             colour = colour,
+             fill = fill,
+             right = TRUE,
+             binwidth = ntBinWidth) +
+    stat_bin(data = subset(inputData, TrialTimeType == "FT"),
+             colour = colour,
+             fill = fill,
+             right = TRUE,
+             binwidth = ftBinWidth) +
+    facet_grid(FrequencyBand ~ TrialTimeType, scales = "free") +
+    geom_vline(aes(xintercept = x), timePointMarkers) +
+    theme_few() +
+    theme(text = element_text(size = 24),
+          panel.margin = unit(1, "lines")) +
+    labs(y = "# of Episodes", title = title)
+}
+
+# make electrodewise histograms
+makeElectrodewiseHistogram <- function(inputData, colour, fill, binWidth, title, timePointMarkers) {
+  
+  plotData <- inputData %>%
+    ggplot(aes(x = Time)) +
+    stat_bin(colour = colour,
+             fill = fill,
+             right = TRUE,
+             binwidth = binWidth) +
+    facet_wrap(~ElectrodeID, scales = "free") +
+    geom_vline(xintercept = timePointMarkers[1]) +
+    geom_vline(xintercept = timePointMarkers[2]) +
+    theme_few() +
+    theme(text = element_text(size = 24),
+          panel.margin = unit(1, "lines")) +
+    labs(y = "# of Episodes", title = title)
+  
+}
 
 # Trim the data -----------------------------------------------------------
 load('Rda/allAnalyzedData.Rda')
@@ -182,78 +222,59 @@ for (thisFrequency in 1:nlevels(episodeData$FrequencyBand)) {
 
 # Make onset histograms ------------------------------------------------------
 
+# set histogram parameters
+colour     <- "steelblue4"
+fill       <- "lightskyblue"
+ntBinWidth <- 305
+ftBinWidth <- 283
+
+
 # group data
 onsetData <- trimmedOnOffData %>%
   ungroup() %>%
-  filter(ObservationType == "Onset") %>%
-  ggplot(aes(x = Time)) +
-  geom_histogram(data = subset(trimmedOnOffData, TrialTimeType == "NT"), 
-                 colour = "steelblue4", 
-                 fill = "lightskyblue", 
-                 binwidth = 305) +
-  geom_histogram(data = subset(trimmedOnOffData, TrialTimeType == "FT"),
-                 colour = "steelblue4",
-                 fill = "lightskyblue",
-                 binwidth = 283) +
-  facet_grid(FrequencyBand ~ TrialTimeType, scales = "free") +
-  geom_vline(aes(xintercept = x), timepointMarkers) +
-  theme_few() +
-  theme(text = element_text(size = 24),
-        panel.margin = unit(1, "lines")) +
-  labs(y = "# of Episodes", title = "Pepisode Onset Times")
-ggsave('Figures/Trimmed/Pepisode_Onset_Times_Histogram.png', onsetData)
+  filter(ObservationType == "Onset")
+onsetPlot <- makeGroupHistogram(inputData = onsetData,
+                                colour,
+                                fill,
+                                ntBinWidth,
+                                ftBinWidth,
+                                title = "Pepisode Onset Times",
+                                timepointMarkers)
+ggsave('Figures/Trimmed/Pepisode_Onset_Times_Histogram.png', onsetPlot)
 
 # electrodewise data
 for (thisFrequency in 1:nlevels(episodeData$FrequencyBand)) {
   onsetNtData <- trimmedOnOffData %>%
     ungroup() %>%
-    filter(ObservationType == "Onset" & 
-             TrialTimeType == "NT" & 
-             FrequencyBand == levels(episodeData$FrequencyBand)[thisFrequency]) %>%
-    ggplot(aes(x = Time)) +
-    geom_histogram(data = subset(trimmedOnOffData, TrialTimeType == "NT"), 
-                   colour = "steelblue4", 
-                   fill = "lightskyblue", 
-                   binwidth = 305) +
-    geom_histogram(data = subset(trimmedOnOffData, TrialTimeType == "FT"),
-                   colour = "steelblue4",
-                   fill = "lightskyblue",
-                   binwidth = 283) +
-    facet_wrap(~ElectrodeID, scales = "free_y") +
-    geom_vline(xintercept = 0) +
-    geom_vline(xintercept = 1830) +
-    theme_few() +
-    theme(text = element_text(size = 24),
-          panel.margin = unit(1, "lines")) +
-    labs(y = "# of Episodes", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Onset Times (NT Trials)"))
+    filter(ObservationType == "Onset" &  
+             TrialTimeType == "NT" &
+             FrequencyBand == levels(episodeData$FrequencyBand)[thisFrequency]) 
+  plotNtData <- makeElectrodewiseHistogram(inputData = onsetNtData,
+                                          colour,
+                                          fill,
+                                          ntBinWidth,
+                                          title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], 
+                                                         " Pepisode Onset Times (NT Trials)"),
+                                          c(0, 1830))
   ggsave(filename =  paste0('Figures/Trimmed/', levels(episodeData$FrequencyBand)[thisFrequency], '_NT_Electrodewise_Pepisode_Onset_Times_Histogram.png'),
-         plot = onsetNtData,
+         plot = plotNtData,
          width = 30,
          height = 15)
   
   onsetFtData <- trimmedOnOffData %>%
     ungroup() %>%
-    filter(ObservationType == "Onset" & 
-             TrialTimeType == "FT" & 
-             FrequencyBand == levels(episodeData$FrequencyBand)[thisFrequency]) %>%
-    ggplot(aes(x = Time)) +
-    geom_histogram(data = subset(trimmedOnOffData, TrialTimeType == "NT"), 
-                   colour = "steelblue4", 
-                   fill = "lightskyblue", 
-                   binwidth = 305) +
-    geom_histogram(data = subset(trimmedOnOffData, TrialTimeType == "FT"),
-                   colour = "steelblue4",
-                   fill = "lightskyblue",
-                   binwidth = 283) +
-    facet_wrap(~ElectrodeID, scales = "free_y") +
-    geom_vline(xintercept = 0) +
-    geom_vline(xintercept = 2830) +
-    theme_few() +
-    theme(text = element_text(size = 24),
-          panel.margin = unit(1, "lines")) +
-    labs(y = "# of Episodes", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Onset Times (FT Trials)"))
+    filter(ObservationType == "Onset" &  
+             TrialTimeType == "FT" &
+             FrequencyBand == levels(episodeData$FrequencyBand)[thisFrequency]) 
+  plotFtData <- makeElectrodewiseHistogram(inputData = onsetFtData,
+                                           colour,
+                                           fill,
+                                           ftBinWidth,
+                                           title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], 
+                                                          " Pepisode Onset Times (FT Trials)"),
+                                           c(0, 2830))
   ggsave(filename =  paste0('Figures/Trimmed/', levels(episodeData$FrequencyBand)[thisFrequency], '_FT_Electrodewise_Pepisode_Onset_Times_Histogram.png'),
-         plot = onsetFtData,
+         plot = plotFtData,
          width = 30,
          height = 15)
          
@@ -265,75 +286,49 @@ for (thisFrequency in 1:nlevels(episodeData$FrequencyBand)) {
 # group data
 offsetData <- trimmedOnOffData %>%
   ungroup() %>%
-  filter(ObservationType == "Offset") %>%
-  ggplot(aes(x = Time)) +
-    geom_histogram(data = subset(trimmedOnOffData, TrialTimeType == "NT"), 
-                   colour = "steelblue4", 
-                   fill = "lightskyblue", 
-                   binwidth = 305) +
-    geom_histogram(data = subset(trimmedOnOffData, TrialTimeType == "FT"),
-                   colour = "steelblue4",
-                   fill = "lightskyblue",
-                   binwidth = 283) +
-    facet_grid(FrequencyBand ~ TrialTimeType, scales = "free") +
-    geom_vline(aes(xintercept = x), timepointMarkers) +
-    theme_few() +
-    theme(text = element_text(size = 24),
-        panel.margin = unit(1, "lines")) +
-    labs(y = "# of Episodes", title = "Pepisode Offset Times")
-ggsave('Figures/Trimmed/Pepisode_Offset_Times_Histogram.png', offsetData)
+  filter(ObservationType == "Offset")
+offsetPlot <- makeGroupHistogram(inputData = offsetData,
+                                colour,
+                                fill,
+                                ntBinWidth,
+                                ftBinWidth,
+                                title = "Pepisode Offset Times",
+                                timepointMarkers)
+ggsave('Figures/Trimmed/Pepisode_Offset_Times_Histogram.png', offsetPlot)
 
 # electrodewise data
 for (thisFrequency in 1:nlevels(episodeData$FrequencyBand)) {
   offsetNtData <- trimmedOnOffData %>%
     ungroup() %>%
-    filter(ObservationType == "Offset" & 
-             TrialTimeType == "NT" & 
-             FrequencyBand == levels(episodeData$FrequencyBand)[thisFrequency]) %>%
-    ggplot(aes(x = Time)) +
-    geom_histogram(data = subset(trimmedOnOffData, TrialTimeType == "NT"), 
-                   colour = "steelblue4", 
-                   fill = "lightskyblue", 
-                   binwidth = 305) +
-    geom_histogram(data = subset(trimmedOnOffData, TrialTimeType == "FT"),
-                   colour = "steelblue4",
-                   fill = "lightskyblue",
-                   binwidth = 283) +
-    facet_wrap(~ElectrodeID, scales = "free_y") +
-    geom_vline(xintercept = 0) +
-    geom_vline(xintercept = 1830) +
-    theme_few() +
-    theme(text = element_text(size = 24),
-          panel.margin = unit(1, "lines")) +
-    labs(y = "# of Episodes", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Offset Times (NT Trials)"))
+    filter(ObservationType == "Offset" &  
+             TrialTimeType == "NT" &
+             FrequencyBand == levels(episodeData$FrequencyBand)[thisFrequency]) 
+  plotNtData <- makeElectrodewiseHistogram(inputData = offsetNtData,
+                                           colour,
+                                           fill,
+                                           ntBinWidth,
+                                           title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], 
+                                                          " Pepisode Offset Times (NT Trials)"),
+                                           c(0, 1830))
   ggsave(filename =  paste0('Figures/Trimmed/', levels(episodeData$FrequencyBand)[thisFrequency], '_NT_Electrodewise_Pepisode_Offset_Times_Histogram.png'),
-         plot = offsetNtData,
+         plot = plotNtData,
          width = 30,
          height = 15)
   
   offsetFtData <- trimmedOnOffData %>%
     ungroup() %>%
-    filter(ObservationType == "Offset" & 
-             TrialTimeType == "FT" & 
-             FrequencyBand == levels(episodeData$FrequencyBand)[thisFrequency]) %>%
-    ggplot(aes(x = Time)) +
-    geom_histogram(data = subset(trimmedOnOffData, TrialTimeType == "NT"), 
-                   colour = "steelblue4", 
-                   fill = "lightskyblue", 
-                   binwidth = 305) +
-    geom_histogram(data = subset(trimmedOnOffData, TrialTimeType == "FT"),
-                   colour = "steelblue4",
-                   fill = "lightskyblue",
-                   binwidth = 283) +
-    facet_wrap(~ElectrodeID, scales = "free_y") +
-    geom_vline(xintercept = 0) +
-    geom_vline(xintercept = 2830) +
-    theme_few() +
-    theme(text = element_text(size = 24),
-          panel.margin = unit(1, "lines")) +
-    labs(y = "# of Episodes", title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], " Pepisode Offset Times (FT Trials)"))
+    filter(ObservationType == "Offset" &  
+             TrialTimeType == "FT" &
+             FrequencyBand == levels(episodeData$FrequencyBand)[thisFrequency]) 
+  plotFtData <- makeElectrodewiseHistogram(inputData = offsetFtData,
+                                           colour,
+                                           fill,
+                                           ftBinWidth,
+                                           title = paste0(levels(episodeData$FrequencyBand)[thisFrequency], 
+                                                          " Pepisode Offset Times (FT Trials)"),
+                                           c(0, 2830))
   ggsave(filename =  paste0('Figures/Trimmed/', levels(episodeData$FrequencyBand)[thisFrequency], '_FT_Electrodewise_Pepisode_Offset_Times_Histogram.png'),
-         plot = offsetFtData,
+         plot = plotFtData,
          width = 30,
          height = 15)
   
