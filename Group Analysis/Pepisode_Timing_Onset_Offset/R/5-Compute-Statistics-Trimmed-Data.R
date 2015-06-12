@@ -14,6 +14,7 @@
 #               a uniform distribution.
 
 library(dplyr)
+library(permute)
 load('Rda/allTrimmedData.Rda')
 
 # Functions ---------------------------------------------------------------
@@ -115,31 +116,107 @@ bayesNullHypTest <- function(anovaStats, numElectrodes, numConditions) {
 saveAnovaResults <- function(anovaData, inputData, trialTimeType, thisFreqBand) {
   
   if (anovaData$"Pr(>F)"[1] < 0.05) {
-    output <- c(levels(inputData$FrequencyBand)[thisFreqBand],
-                                                    trialTimeType,
-                                                    anovaData$"F value"[1],
-                                                    anovaData$"Pr(>F)"[1],
-                                                    NA)
+    
+    control <- how(within = Within(type = "free"),
+                   blocks = inputData$ElectrodeID)
+    trueP <- runAnovaPermutations(inputData, anovaData$"F value"[1], control, 1000)
+    
+    if (trueP < 0.05) {
+      postHocResult <- runAnovaPostHoc(inputData)
+    }
+    
+    anovaOutput <- data.frame(FrequencyBand = thisFreqBand,
+                              TrialTimeType = trialTimeType,
+                              anovaF = anovaData$"F value"[1],
+                              anovaP = anovaData$"Pr(>F)"[1],
+                              PermCorrectedP = trueP,
+                              NullHypTestP = NA)
+    postHocOutput <- data.frame(FrequencyBand = thisFreqBand,
+                                TrialTimeType = trialTimeType,
+                                Comparison = postHocResult$Comparison,
+                                VStatistic = postHocResult$VStatistic,
+                                ActualP = postHocResult$ActualP,
+                                CorrectedP = postHocResult$CorrectedP)
+
   } else {
     
     pH0 <- bayesNullHypTest(anovaStats = anovaData, numElectrodes = nlevels(inputData$ElectrodeID), numConditions = nlevels(inputData$TimeBin))
-    output <- c(levels(inputData$FrequencyBand)[thisFreqBand],
-                                                    trialTimeType,
-                                                    anovaData$"F value"[1],
-                                                    anovaData$"Pr(>F)"[1],
-                                                    pH0)
+    anovaOutput <- data.frame(FrequencyBand = thisFreqBand,
+                              TrialTimeType = trialTimeType,
+                              anovaF = anovaData$"F value"[1],
+                              anovaP = anovaData$"Pr(>F)"[1],
+                              PermCorrectedP = NA,
+                              NullHypTestP = pH0)
+    postHocOutput <- data.frame(Comparison = NA,
+                                VStatistic = NA,
+                                ActualP = NA,
+                                CorrectedP = NA)
     
   }
   
+  return(list(anovaOutput = anovaOutput, postHocOutput = postHocOutput))
+  
+}
+
+# run posthoc analysis for anova
+runAnovaPostHoc <- function(inputData) {
+  
+  output <- data.frame(Comparison = NA, VStatistic = NA, ActualP = NA, CorrectedP = NA)
+  
+  # make list of pairwise comparisons
+  pairwise <- data.frame(Cond1 = c("Pre", "Pre", "Tele"),
+                         Cond2 = c("Tele", "Post", "Post"))
+  pairwise$Cond1 <- factor(pairwise$Cond1, levels = levels(inputData$TimeBin))
+  pairwise$Cond2 <- factor(pairwise$Cond2, levels = levels(inputData$TimeBin))
+  
+  for (thisComparison in 1:nrow(pairwise)) {
+    
+    cond1 <- inputData %>% filter(TimeBin == pairwise$Cond1[thisComparison])
+    cond2 <- inputData %>% filter(TimeBin == pairwise$Cond2[thisComparison])
+    
+    wilcoxResult <- wilcox.test(x = cond1$BinMean, y = cond2$BinMean, paired = TRUE)
+    
+    output[nrow(output) + 1, ] <- c(paste(pairwise$Cond1[thisComparison], "vs.", pairwise$Cond2[thisComparison]),
+                                    wilcoxResult$statistic,
+                                    wilcoxResult$p.value,
+                                    ifelse(wilcoxResult$p.value < 0.05, 
+                                           wilcoxResult$p.value * nrow(pairwise),
+                                           NA))
+    
+  }
+  output <- output %>%
+    filter(is.na(Comparison) == FALSE)
   return(output)
   
+}
+
+# run permutation analysis for anova
+runAnovaPermutations <- function(inputData, trueF, controlStructure, numPerms) {
+  
+  permF <- rep(0, numPerms)
+  permOrders <- shuffleSet(nrow(inputData), numPerms, controlStructure)
+  
+  for (thisPerm in 1:numPerms) {
+    
+    tempData <- inputData
+    tempData$BinMean <- tempData$BinMean[permOrders[thisPerm, ]]
+    permAnova <- cleanAnova(tempData)
+    permF[thisPerm] <-permAnova$"F value"[1]
+    
+  }
+  
+  permF[length(permF) + 1] <- trueF
+  permF <- sort(permF, decreasing = TRUE)
+  trueP <- which(permF == trueF) / length(permF)
+  return(trueP)
 }
 
 
 # Perform repeated measures ANOVAs ----------------------------------------
 
 # initialize output array
-aovStatsOutput <- data.frame(FrequencyBand = NA, TrialTimeType = NA, anovaF = NA, anovaP = NA, NullHypTestP = NA)
+aovStatsOutput <- data.frame(FrequencyBand = NA, TrialTimeType = NA, anovaF = NA, anovaP = NA, PermCorrectedP = NA, NullHypTestP = NA)
+aovPostHocOutput <- data.frame(FrequencyBand = NA, TrialTimeType = NA, Comparison = NA, VStatistic = NA, ActualP = NA, CorrectedP = NA)
 
 for (thisFreqBand in 1:nlevels(binnedEpisodeData$FrequencyBand)) {
   
@@ -153,26 +230,33 @@ for (thisFreqBand in 1:nlevels(binnedEpisodeData$FrequencyBand)) {
   ntAov <- cleanAnova(ntBinnedData)
   ftAov <- cleanAnova(ftBinnedData)
   
-  # If the ANOVA is significant, add it to the data frame; otherwise, perform
-  # Bayesian null hypothesis testing
-  aovStatsOutput[nrow(aovStatsOutput) + 1, ] <- saveAnovaResults(anovaData = ntAov, 
-                                                                 inputData = binnedEpisodeData, 
-                                                                 trialTimeType = "NT", 
-                                                                 thisFreqBand = thisFreqBand)
-  aovStatsOutput[nrow(aovStatsOutput) + 1, ] <- saveAnovaResults(anovaData = ftAov, 
-                                                                 inputData = binnedEpisodeData, 
-                                                                 trialTimeType = "FT", 
-                                                                 thisFreqBand = thisFreqBand)
+  # If the ANOVA is significant, perform permutation analysis; otherwise,
+  # perform Bayesian null hypothesis testing
+  anovaResults <- saveAnovaResults(anovaData = ntAov,
+                                   inputData = ntBinnedData,
+                                   trialTimeType = "NT",
+                                   thisFreqBand = levels(binnedEpisodeData$FrequencyBand)[thisFreqBand])
+  aovStatsOutput <- rbind(aovStatsOutput, anovaResults$anovaOutput)
+  if (is.na(anovaResults$postHocOutput$Comparison[1]) == FALSE) {
+    aovPostHocOutput <- rbind(aovPostHocOutput, anovaResults$postHocOutput)
+  }
   
+  anovaResults <- saveAnovaResults(anovaData = ftAov,
+                                   inputData = ftBinnedData,
+                                   trialTimeType = "FT",
+                                   thisFreqBand = levels(binnedEpisodeData$FrequencyBand)[thisFreqBand])
+  aovStatsOutput <- rbind(aovStatsOutput, anovaResults$anovaOutput)
+  if (is.na(anovaResults$postHocOutput$Comparison[1]) == FALSE) {
+    aovPostHocOutput <- rbind(aovPostHocOutput, anovaResults$postHocOutput)
+  }
+  
+   
 }
-
-  
-
 
 # Perform chi-square on onsets and offsets --------------------------------
 
 chiSquareOutput <- data.frame(Event = NA, TrialTimeType = NA, FrequencyBand = NA, ChiSquared = NA, df = NA, RawPValue = NA, CorrectedPValue = NA)
-postHocOutput <- data.frame(Event = NA, TrialTimeType = NA, FrequencyBand = NA, Bin = NA, RawPValue = NA, CorrectedPValue = NA)
+chiSquarePostHocOutput <- data.frame(Event = NA, TrialTimeType = NA, FrequencyBand = NA, Bin = NA, RawPValue = NA, CorrectedPValue = NA)
 
 # hist pretty-ifys the breaks, which we don't want, so we'll set the breaks
 # manually
@@ -206,7 +290,7 @@ for (thisFreqBand in 1:nlevels(trimmedOnOffData$FrequencyBand)) {
       for (thisBin in 1:length(histData$counts)) {
         
         chiPostHoc <- runChiSquaredPostHoc(histData, thisBin)
-        postHocOutput[nrow(postHocOutput) + 1, ] <- c(as.character(analysisDF$ObservationType[thisAnalysis]),
+        chiSquarePostHocOutput[nrow(chiSquarePostHocOutput) + 1, ] <- c(as.character(analysisDF$ObservationType[thisAnalysis]),
                                                       as.character(analysisDF$TimeType[thisAnalysis]),
                                                       levels(trimmedOnOffData$FrequencyBand)[thisFreqBand],
                                                       thisBin,
@@ -220,4 +304,9 @@ for (thisFreqBand in 1:nlevels(trimmedOnOffData$FrequencyBand)) {
   
 }
 
-save(file = 'Rda/allStats.Rda', list = c("aovStatsOutput", "chiSquareOutput", "postHocOutput"))
+aovStatsOutput         <- aovStatsOutput %>% filter(is.na(FrequencyBand) == FALSE)
+aovPostHocOutput       <- aovPostHocOutput %>% filter(is.na(FrequencyBand) == FALSE)
+chiSquareOutput        <- chiSquareOutput %>% filter(is.na(FrequencyBand) == FALSE)
+chiSquarePostHocOutput <- chiSquarePostHocOutput %>% filter(is.na(FrequencyBand) == FALSE)
+
+save(file = 'Rda/allStats.Rda', list = c("aovStatsOutput", "aovPostHocOutput", "chiSquareOutput", "chiSquarePostHocOutput"))
