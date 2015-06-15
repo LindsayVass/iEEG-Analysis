@@ -31,6 +31,12 @@ scale_y_continuous <- function(...) {
 
 # make histogram of group data
 makeGroupHistogram <- function(inputData, colour, fill, binBreaks, title, timePointMarkers, chiSquareMarkers, sigMarkers) {
+  
+  # get expected frequency based on number of observations
+#   expFreq <- inputData %>%
+#     group_by(ObservationType) %>%
+#     summarise(Freq = n() / length(binBreaks))
+  
   plotData <- inputData %>%
     ggplot(aes(x = Time)) +
     stat_bin(data = inputData,
@@ -40,6 +46,7 @@ makeGroupHistogram <- function(inputData, colour, fill, binBreaks, title, timePo
              breaks = binBreaks) +
     facet_grid(ObservationType ~ .) +
     geom_vline(aes(xintercept = x, size = 1), timePointMarkers) +
+#     geom_hline(aes(yintercept = Freq), expFreq) +
     theme_few() +
     theme(text = element_text(size = 24),
           panel.margin = unit(1, "lines")) +
