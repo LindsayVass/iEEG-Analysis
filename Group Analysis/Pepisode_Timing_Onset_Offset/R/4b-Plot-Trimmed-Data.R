@@ -12,7 +12,7 @@ library(dplyr)
 library(ggthemes)
 library(grid)
 
-
+load('Rda/allAnalyzedData.Rda')
 
 # Functions ---------------------------------------------------------------
 
@@ -110,7 +110,7 @@ makeElectrodewiseHistogram <- function(inputData, colour, fill, binWidth, title,
 }
 
 # Trim the data -----------------------------------------------------------
-load('Rda/allAnalyzedData.Rda')
+
 
 ntTrim <- c(-1830, 3660)
 ftTrim <- c(-2830, 5660)
