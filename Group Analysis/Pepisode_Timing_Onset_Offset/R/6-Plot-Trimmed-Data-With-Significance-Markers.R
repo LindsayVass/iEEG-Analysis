@@ -18,6 +18,54 @@ dir.create("Figures/TrimmedWithSigMarkers")
 
 # Functions ---------------------------------------------------------------
 
+# make strip text labels for scatterplots
+scatterLabeller <- function(variable, value) {
+  return(thisLabel$PlotLabel[value])
+}
+
+calcGroupMeanElecMean <- function(dataFrame, elecVar = "ElectrodeID", facetVar1 = "FrequencyBand", facetVar2 = "TrialTimeType", conditionVar = "TimePoint", dataVar) {
+  # We want our error bars to ultimately reflect the within-subject variability
+  # rather than between-subject To do this, we'll use the methods in Cousineau
+  # (2005) Tutorials in Quantitative Methods for Psychology and Morey (2008)
+  # [Same Journal], which corrects the bias in the Cousineau method Essentially,
+  # we will calculate normalized values for each observation, in which we take
+  # the original observation, subtract the electrode mean, add the group mean,
+  # and correct for the # of conditions
+  
+  # calculate the mean across conditions for each electrode grouped by facetVar
+  elecMean <- dataFrame %>%
+    group_by_(elecVar, facetVar1, facetVar2) %>%
+    summarise_(EMean = interp(~mean(dataVar), dataVar = as.name(dataVar)))
+  
+  # calculate the mean across conditions across electrodes grouped by groupVar
+  groupMean <- dataFrame %>%
+    group_by_(facetVar1, facetVar2) %>%
+    summarise_(GMean = interp(~mean(dataVar), dataVar = as.name(dataVar)))
+  
+  # now we'll normalize the observations by taking into account the electrode
+  # and group means to do this, we'll need to join our tables together
+  normData <- inner_join(dataFrame, elecMean)
+  normData <- inner_join(normData, groupMean) %>%
+    mutate_(NormData = interp(~(dataVar - EMean + GMean), dataVar = as.name(dataVar))) %>%
+    filter_(interp(~(is.na(dataVar) == FALSE), dataVar = as.name(dataVar))) %>%
+    group_by_(facetVar1, facetVar2, conditionVar) %>%
+    summarise_(NormVar = interp(~var(NormData), NormData = as.name("NormData"))) %>%
+    mutate_(NormVarUnbias = interp(~(NormVar * (nlevels(dataFrame$conditionVar) / (nlevels(dataFrame$conditionVar) - 1))), 
+                                   conditionVar = as.name(conditionVar),
+                                   NormVar = as.name("NormVar")),
+            NormSEM = interp(~(sqrt(NormVarUnbias) / sqrt(nlevels(dataFrame$elecVar))), 
+                             elecVar = as.name(elecVar),
+                             NormVarUnbias = as.name("NormVarUnbias"))) 
+  
+  # now summarise the original data and join with the normalized SEM
+  dataFrame <- dataFrame %>%
+    group_by_(facetVar1, facetVar2, conditionVar) %>%
+    summarise_(Value = interp(~mean(dataVar), dataVar = as.name(dataVar))) %>%
+    inner_join(normData)
+  
+  return(dataFrame)
+}
+
 # the following two functions allow you to scale the y axis without specifying
 # the limits
 scale_dimension.custom_expand <- function(scale, expand = ggplot2:::scale_expand(scale)) {
@@ -179,6 +227,54 @@ for (thisFreqBand in 1:nlevels(trimmedOnOffData$FrequencyBand)) {
                              levels(thisData$FrequencyBand)[thisFreqBand],
                              '_',
                              levels(thisData$TrialTimeType)[thisTimeType],
-                             '_Pepisode_Onset_Offset_Histograms.png'))
+                             '_Pepisode_Onset_Offset_Histograms.png'),
+           width = 20, height = 10)
   }
 }
+
+
+# Make scatterplots of mean pepisode values -------------------------------
+plotEpisodeData <- calcGroupMeanElecMean(binnedEpisodeData, 
+                                         elecVar = "ElectrodeID", 
+                                         facetVar1 = "FrequencyBand", 
+                                         facetVar2 = "TrialTimeType", 
+                                         conditionVar = "TimeBin", 
+                                         dataVar = "Mean")
+
+# make ANOVA text to print on plots
+aovStatsOutput <- aovStatsOutput %>%
+  mutate(PlotLabel = paste0(TrialTimeType,
+                            '\nANOVA F = ', 
+                            signif(anovaF, digits = 3),
+                            '\nUncorrected P = ', 
+                            signif(anovaP, digits = 2), 
+                            '\nPerm. Corrected P = ', 
+                            signif(PermCorrectedP, digits = 2)))
+
+# join the label text with the scatterplot data
+plotEpisodeData$FrequencyBand <- factor(plotEpisodeData$FrequencyBand, levels = levels(binnedEpisodeData$FrequencyBand))
+plotEpisodeData$TimeBin <- factor(plotEpisodeData$TimeBin, levels = c("Pre", "Tele", "Post"))
+
+# plot the data for each frequency band
+for (thisFreqBand in 1:nlevels(plotEpisodeData$FrequencyBand)) {
+  
+  thisData <- plotEpisodeData %>%
+    filter(FrequencyBand == levels(plotEpisodeData$FrequencyBand)[thisFreqBand])
+  thisLabel <- aovStatsOutput %>%
+    filter(FrequencyBand == levels(plotEpisodeData$FrequencyBand)[thisFreqBand])
+  
+  ggplot(thisData, aes(x = TimeBin, y = Value, ymin = Value - NormSEM, ymax = Value + NormSEM)) +
+    geom_point(size = 4) +
+    geom_pointrange() +
+    facet_grid(~TrialTimeType, labeller = scatterLabeller) +
+    ggtitle(paste0(levels(plotEpisodeData$FrequencyBand)[thisFreqBand], " Pepisode by Time Point")) +
+    theme(text = element_text(size = 18)) +
+    ylab("Pepisode")
+ ggsave(filename = paste0('Figures/TrimmedWithSigMarkers/',
+                          levels(plotEpisodeData$FrequencyBand)[thisFreqBand],
+                          '_Pepisode_by_Time_and_TimePoint.png'),
+        width = 16, height = 8)   
+  
+}
+
+
