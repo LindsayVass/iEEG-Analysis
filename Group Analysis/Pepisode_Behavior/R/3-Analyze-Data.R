@@ -3,7 +3,8 @@
 # Date:         19 June 2015
 # Purpose:      This script will the clean data output by 2-Clean-Data.R 
 #               Specifically, it will test whether pepisode during the
-#               teleporter on trial N predicts the latency on trial N+1.
+#               teleporter on trial N predicts the latency to enter the correct
+#               arm on trial N+1.
 
 library(dplyr)
 library(broom)
@@ -160,10 +161,12 @@ for (thisElectrode in 1:nlevels(validData$ElectrodeID)) {
 glmOutput$ElectrodeID <- factor(glmOutput$ElectrodeID)
 
 # Visualize the data for each electrode
-p <- withinSessionData %>%
-  filter(TimeBin == "Tele") %>%
-  ggplot(aes(x = MeanPepisode, y = Latency)) +
+p <- validData %>%
+  ggplot(aes(x = PrevTrialPepisode, y = Latency)) +
   geom_point() +
   facet_wrap(~ElectrodeID)
 dir.create('Figures')
 ggsave('Figures/Latency_By_Teleporter_Pepisode_Each_Electrode.png', width = 16, height = 12)
+
+# Save data
+save(file = 'Rda/allAnalyzedData.Rda', list = c('validData', 'glmOutput'))
