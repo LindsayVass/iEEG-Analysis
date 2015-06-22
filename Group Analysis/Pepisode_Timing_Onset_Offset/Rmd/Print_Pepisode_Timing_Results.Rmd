@@ -1,0 +1,189 @@
+---
+title: "Pepisode Timing Results"
+author: "Lindsay Vass"
+date: "9 June 2015"
+output: html_document
+---
+
+## Calculation of Pepisode Values
+
+First I built the distribution of power values by taking the cleaned data and 
+calculating the power at each frequency at every time point of the entire navigation
+period when subjects were searching for stores.
+
+Parameters:
+
+* 31 log-spaced frequencies between 1 Hz and 181 Hz
+* 6 cycle Morlet wavelets
+
+Then, I extracted epoched data for each trial. The epochs were defined as follows:
+
+* Start time: 3000 ms before teleporter entry
+* End time: 3000 ms after teleporter exit
+
+I calculated the power at each frequency at every time point of the epoch, using
+mirrored buffers (length = 3 cycles at 1 Hz) to avoid edge artifacts, again
+using 6 cycle Morlet wavelets.
+
+This timeseries data was then amplitude-thresholded using the value at 95% of the
+distribution calculated earlier. This returns a binary vector which indicates
+whether power exceeded the amplitude threshold at each time point. This vector
+was then duration-thresholded (n >= 3 cycles) so that only episodes lasting at
+least 3 cycles are retained. The result is a binary vector showing times when
+significant oscillatory episodes are present.
+
+This vector was further processed to identify the onset and offset of each
+episode. The onset was defined as the first time point of the episode; if an
+episode was present at the first time point of the trial (i.e., the trial started
+on an ongoing oscillation), then the onset was set as the first time point of the
+trial. The offset was defined as the last time point of the episode; if an 
+episode was present at the last time point of the trial (i.e., the trial ended
+on an ongoing oscillation), then the offset was set as the last time point of the
+trial.
+
+Thus, this analysis output the following data for each electrode/frequency/trial:
+
+* Binary vector indicating whether a significant episode was present at each 
+time point of the trial
+* Vector of onset times
+* Vector of offset times
+
+## Group Analysis of Episode Timing
+
+To identify when oscillations were present across the group, I concatenated all
+of the binary vectors of the same Time Type (NT/FT) row-wise and took the mean 
+at each time point. Because these are binary vectors, the mean indicates the 
+proportion of time episodes were present across all trials/electrodes.
+
+The plots below show that pepisode is consistent across the entire trial in all
+frequency bands. Edge effects can be seen at the beginning and end, with shorter
+effects at higher frequencies. Vertical lines indicate times of teleporter entry
+and exit.
+
+```{r, echo = FALSE, message = FALSE, fig.width=20, fig.height=10}
+
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(grid)
+
+setwd('~/Documents/MATLAB/iEEG/Group Analysis/Pepisode_Timing_Onset_Offset/')
+load('Rda/allAnalyzedData.Rda')
+
+# plot group data
+timepointMarkers <- data.frame(x = c(0, 1830, 0, 2830), TrialTimeType = c("NT", "NT", "FT", "FT"))
+lineData <- episodeData %>%
+  group_by(FrequencyBand, TrialTimeType, Time) %>%
+  summarise(GroupMean = mean(Mean), GroupSEM = sd(Mean) / sqrt(n())) 
+linePlot <- lineData %>%
+  ggplot(aes(x = Time, y = GroupMean, ymin = GroupMean - GroupSEM, ymax = GroupMean + GroupSEM)) + 
+  geom_ribbon(color = "lightskyblue", fill = "lightskyblue") +
+  geom_line(color = "steelblue4") +
+  geom_vline(aes(xintercept = x, linetype = "dashed"), timepointMarkers) +
+  facet_grid(FrequencyBand ~ TrialTimeType, scales = "free_x") +
+  theme_few() +
+  labs(y = "Mean Pepisode", title = "Pepisode Over Time") +
+  theme(text = element_text(size = 24),
+        axis.text = element_text(size = 18),
+        axis.title.x = element_text(vjust = -0.5),
+        axis.title.y = element_text(vjust = 1),
+        panel.margin = unit(1, "lines"))
+print(linePlot)
+
+```
+
+## Electrode-wise Analysis of Episode Timing
+
+The above results, showing flat pepisode, could have occurred for two reasons:
+
+* Pepisode is consistent over time within each electrode
+* Pepisode peaks at a particular time within each electrode, but these peaks are
+not consistent across electrodes
+
+To adjudicate between these two possibilities, I plotted the pepisode timing
+values separately for each electrode. Below I show just one of these plots, which
+depicts theta pepisode for NT trials. All the other plots for the other frequency
+bands and time types can be found in the Figures folder.
+
+The individual electrode results appear to support the 1st conclusion: pepisode
+is relatively consistent over time within an electrode. The individual electrode
+data is noisier than the group data since it contains many fewer observations but
+appears to be relatively flat for each electrode and frequency (with a few
+exceptions -- see for example Delta FT).
+
+```{r, echo = FALSE, message = FALSE, fig.width=30, fig.height=15}
+
+# plot theta data for NT trials
+lineNtData <- episodeData %>%
+    filter(FrequencyBand == "Theta" & TrialTimeType == "NT") %>%
+    ggplot(aes(x = Time, y = Mean, ymin = Mean - SEM, ymax = Mean + SEM)) + 
+    geom_ribbon(color = "lightskyblue", fill = "lightskyblue") +
+    geom_line(color = "steelblue4") +
+    geom_vline(xintercept = 0) +
+    geom_vline(xintercept = 1830) +
+    facet_wrap(~ElectrodeID) +
+    theme_few() +
+    labs(y = "Mean Pepisode", title = "Theta Pepisode Over Time (NT Trials)") +
+    theme(text = element_text(size = 24),
+          axis.text = element_text(size = 18),
+          axis.title.x = element_text(vjust = -0.5),
+          axis.title.y = element_text(vjust = 1),
+          panel.margin = unit(1, "lines"))
+print(lineNtData)
+
+```
+
+## Group Analysis of Pepisode Onsets and Offsets
+
+To identify when pepisodes tend to begin and end, I plotted the onset and offset
+times in histogram form, as shown below. Each bin is 261 ms. Vertical lines indicate times of
+teleporter entry and exit. The histograms show that pepisode onsets and offsets
+are evenly distributed across the trial, with no apparent peaks at the times of
+teleporter entry or exit. Peaks can be seen however in the first bin of the 
+onsets (many trials begin on an oscillation) and the last bin of the offsets
+(many trials end on an oscillation).
+
+```{r, echo = FALSE, message = FALSE, fig.width=20, fig.height=10}
+
+# plot group onset data
+onsetData <- onOffData %>%
+  ungroup() %>%
+  filter(ObservationType == "Onset") %>%
+  ggplot(aes(x = Time)) +
+  geom_histogram(colour = "steelblue4", fill = "lightskyblue", binwidth = 261) +
+  facet_grid(FrequencyBand ~ TrialTimeType, scales = "free") +
+  geom_vline(aes(xintercept = x), timepointMarkers) +
+  theme_few() +
+  theme(text = element_text(size = 24),
+        panel.margin = unit(1, "lines")) +
+  labs(y = "# of Episodes", title = "Pepisode Onset Times")
+print(onsetData)
+
+# plot group offset data
+offsetData <- onOffData %>%
+  ungroup() %>%
+  filter(ObservationType == "Offset") %>%
+  ggplot(aes(x = Time)) +
+  geom_histogram(colour = "steelblue4", fill = "lightskyblue", binwidth = 261) +
+  facet_grid(FrequencyBand ~ TrialTimeType, scales = "free") +
+  geom_vline(aes(xintercept = x), timepointMarkers) +
+  theme_few() +
+  theme(text = element_text(size = 24),
+        panel.margin = unit(1, "lines")) +
+  labs(y = "# of Episodes", title = "Pepisode Offset Times")
+print(offsetData)
+
+```
+
+## Electrode-wise Analysis of Pepisode Onsets and Offsets
+
+Much like the episode timing, the onsets and offsets could appear flat either
+because each electrode's distribution is flat or because each electrode shows
+unique peaks in the distribution. Below, I've plotted the onsets and offsets for
+the theta band NT trials.
+
+```{r, echo = FALSE, message = FALSE, fig.width=30, fig.height=15}
+
+
+
+```
