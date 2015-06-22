@@ -169,4 +169,4 @@ dir.create('Figures')
 ggsave('Figures/Latency_By_Teleporter_Pepisode_Each_Electrode.png', width = 16, height = 12)
 
 # Save data
-save(file = 'Rda/allAnalyzedData.Rda', list = c('validData', 'glmOutput'))
+save(file = 'Rda/allAnalyzedData.Rda', list = c('validData', 'glmOutput', 'numPerm'))

@@ -1,0 +1,113 @@
+---
+title: "Pepisode during teleporter does not predict latency to enter the correct arm on the next trial"
+author: "Lindsay Vass"
+date: "22 June 2015"
+output: html_document
+---
+
+## Calculation of Pepisode Values
+
+#### Building the power distribution
+First I built the distribution of power values by taking the cleaned data and 
+calculating the power at each frequency at every time point of the entire navigation
+period when subjects were searching for stores.
+
+Parameters:
+
+* 31 log-spaced frequencies between 1 Hz and 181 Hz
+* 6 cycle Morlet wavelets
+
+#### Epoching the data
+
+Then, I extracted epoched data for each trial. The epochs were defined as follows:
+
+* Start time: 3000 ms before teleporter entry
+* End time: 3000 ms after teleporter exit
+
+#### Pepisode calculation
+
+I calculated the power at each frequency at every time point of the epoch, using
+mirrored buffers (length = 3 cycles at 1 Hz) to avoid edge artifacts, again
+using 6 cycle Morlet wavelets.
+
+This timeseries data was then amplitude-thresholded using the value at 95% of the
+distribution calculated earlier. This returns a binary vector which indicates
+whether power exceeded the amplitude threshold at each time point. This vector
+was then duration-thresholded (n >= 3 cycles) so that only episodes lasting at
+least 3 cycles are retained. The result is a binary vector showing times when
+significant oscillatory episodes are present.
+
+#### Re-epoching the data
+
+After calculating pepisode at each time point of the trial, the Pre and Post
+time bins were trimmed to be the same length as the Teleporter bin (1830 ms
+for NT trials and 2830 ms for FT trials).
+
+## Calculation of latency
+
+The value we are attempting to predict is the latency to enter the correct arm
+of the maze. This is defined as the time at which the patient crosses the 
+boundary between the central plaza and the correct arm of the maze. Trials for
+which the patient exited the teleporter facing the correct arm (1/3 of trials)
+were excluded from the analysis.
+
+## Scatterplot of Pepisode vs. Latency
+
+The plot below shows the relationship between pepisode on trial N and the 
+latency to enter the correct arm of the maze on trial N+1. There does not appear
+to be a relationship between these values for any electrode.
+
+```{r, echo = FALSE, message = FALSE, fig.width=16, fig.height=12}
+library(dplyr)
+library(ggplot2)
+load('../Rda/allAnalyzedData.Rda')
+
+for (thisFreqBand in 1:nlevels(validData$FrequencyBand)) {
+  p <- validData %>%
+  filter(validData$FrequencyBand == levels(validData$FrequencyBand)[thisFreqBand]) %>%
+  ggplot(aes(x = PrevTrialPepisode, y = Latency)) +
+  geom_point() +
+  facet_wrap(~ElectrodeID) +
+  ggtitle(paste(levels(validData$FrequencyBand)[thisFreqBand], "Pepisode"))
+  print(p)
+}
+
+
+```
+
+## Modeling Pepisode vs. Latency Within-Electrode
+
+Each electrode with at least 10 valid trials (N = `r nlevels(glmOutput$ElectrodeID)`) 
+was included in the analysis. Data for each frequency band were analyzed 
+separately. The dependent variable (y) was the latency to enter the correct arm 
+of the maze. The independent variables (x) included: 
+
+* Pepisode during the teleporter on the previous trial
+* Previous trial's time type (NT/FT)
+* Previous trial's space type (NS/FS)
+
+The data were fit with a linear model of the quasipoisson family since latency
+is bounded by 0. To determine the true P value for the Beta estimates, the data
+for each model were randomized `r numPerm` times to build a distribution of Beta
+estimates. Because pepisode should show a negative relationship with latency --
+that is, greater pepisode should result in lower latency -- the corrected P value
+was defined based on the number of observations in the distribution that were
+more negative than the observed Beta estimate. The P value threshold was then adjusted
+using the Bonferroni correction for the number of frequency bands analyzed (N = 
+`r nlevels(validData$FrequencyBand)`; P < `r 0.05/nlevels(validData$FrequencyBand)`).
+
+```{r, echo = FALSE}
+
+glmOutput$FrequencyBand <- factor(glmOutput$FrequencyBand)
+correctedOutput <- glmOutput %>%
+  filter(term == "PrevTrialPepisode" &
+           CorrectedP < 0.05 / nlevels(FrequencyBand)) %>%
+  select(ElectrodeID, FrequencyBand, CorrectedP) %>%
+  rename(PValue = CorrectedP)
+print(correctedOutput)
+
+```
+
+As shown above, across all frequency bands, there were only `r nrow(correctedOutput)`
+ observations that exceeded the Bonferroni-corrected threshold. All of these
+observations were from the same patient and on the same depth electrode.
