@@ -31,7 +31,7 @@ runClassifier <- function(trainingData, testingData) {
 
 classificationResults <- data.frame()
 
-for (thisElectrode in 7:nlevels(cleanData$ElectrodeID)) {
+for (thisElectrode in 1:nlevels(cleanData$ElectrodeID)) {
   
   cat('\n\n-------------------------------------------------\n\n')
   cat(levels(cleanData$ElectrodeID)[thisElectrode])
