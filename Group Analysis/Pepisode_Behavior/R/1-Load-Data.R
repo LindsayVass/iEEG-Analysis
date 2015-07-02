@@ -10,6 +10,7 @@
 #               loads the list of good epochs (trials) for each electrode/session.
 
 library(R.matlab)
+library(plyr)
 library(dplyr)
 library(tidyr)
 

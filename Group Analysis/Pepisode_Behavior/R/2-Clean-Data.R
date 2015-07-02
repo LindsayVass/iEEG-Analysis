@@ -3,9 +3,9 @@
 # Date:         19 June 2015
 # Purpose:      This script will clean the data loaded by 1-Load-Data.R
 
-library(plyr)
-library(dplyr)
-library(tidyr)
+# library(plyr)
+# library(dplyr)
+# library(tidyr)
 
 load('Rda/allRawData.Rda')
 

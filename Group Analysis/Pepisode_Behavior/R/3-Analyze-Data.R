@@ -6,9 +6,14 @@
 #               teleporter on trial N predicts the latency to enter the correct
 #               arm on trial N+1.
 
-library(dplyr)
+# pkgs = names(sessionInfo()$otherPkgs)
+# pkgs = paste('package:', pkgs, sep = "")
+# lapply(pkgs, detach, character.only = TRUE, unload = TRUE)
+# 
+# library(dplyr)
 library(broom)
 library(permute)
+library(ggplot2)
 
 load('Rda/allCleanData.Rda')
 
