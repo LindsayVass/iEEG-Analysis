@@ -26,7 +26,7 @@ eStart = -3;
 eEnd = 6;
 
 labelsToRemove_noSpikes = {'spike','complex','other'};
-labelsToRemove_noWaves = {'sharpWave'};
+labelsToRemove_noWaves = {'spike','complex','other','sharpWave'};
 %% Set up filenames and paths
 edf_files = {edf_file_1, edf_file_2};
 
@@ -968,15 +968,38 @@ for thisDepth = 1:length(depthNames)
             noSpikeEEG(thisEDF) = pop_saveset(noSpikeEEG(thisEDF), ['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisDepth} '_noSpikes.set']);
         end
         
+        % if the spikes overlap with a real event, it will be removed, so check
+        % for that now
+        origEventLatency  = cell2mat({EEG(thisEDF).event.latency});
+        [missingSpikeLatency, missingSpikeInd] = intersect(origEventLatency, indexes);
+        if thisEDF == 1
+            goodNoSpikeEpochs1 = [1:1:length(origEventLatency)]';
+            goodNoSpikeEpochs1(missingSpikeInd) = [];
+        else
+            goodNoSpikeEpochs2 = [1:1:length(origEventLatency)]';
+            goodNoSpikeEpochs2(missingSpikeInd) = [];
+        end
+        
         % Save version with spikes and waves removed
-        indexes = marks_label2index(noSpikeEEG(thisEDF).marks.time_info, labelsToRemove_noWaves, 'indexes', 'exact', 'on');
+        indexes = marks_label2index(EEG(thisEDF).marks.time_info, labelsToRemove_noWaves, 'indexes', 'exact', 'on');
         
         if isempty(indexes)
             warning('No sharp waves found. Saving the data as it is.')
             noWaveEEG(thisEDF) = pop_saveset(noSpikeEEG(thisEDF), ['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
         else
-            [noWaveEEG(thisEDF),~] = pop_marks_select_data(noSpikeEEG(thisEDF), 'time marks', indexes);
+            [noWaveEEG(thisEDF),~] = pop_marks_select_data(EEG(thisEDF), 'time marks', indexes);
             noWaveEEG(thisEDF) = pop_saveset(noWaveEEG(thisEDF), ['PreProcessing Intermediates/' save_stems{thisEDF} '_unepoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
+        end
+        
+        % if the spikes or waves overlap with a real event, it will be removed,
+        % so check for that now
+        [missingWaveLatency, missingWaveInd] = intersect(origEventLatency, indexes);
+        if thisEDF == 1
+            goodNoWaveEpochs1 = [1:1:length(origEventLatency)]';
+            goodNoWaveEpochs1(missingWaveInd) = [];
+        else
+            goodNoWaveEpochs2 = [1:1:length(origEventLatency)]';
+            goodNoWaveEpochs2(missingWaveInd) = [];
         end
         
     end
@@ -990,6 +1013,8 @@ for thisDepth = 1:length(depthNames)
     
     % Make a combined list of the epochs we kept
     epochOffset = length(eType) - length(epochsEDF2); % update goodEpochs2 indices so they match the true epoch number
+    goodEpochs1 = goodNoSpikeEpochs1(goodEpochs1);
+    goodEpochs2 = goodNoSpikeEpochs2(goodEpochs2);
     goodEpochs2 = goodEpochs2 + epochOffset;
     goodEpochs = cat(1, goodEpochs1, goodEpochs2);
     
@@ -1008,6 +1033,8 @@ for thisDepth = 1:length(depthNames)
     
     % Make a combined list of the epochs we kept
     epochOffset = length(eType) - length(epochsEDF2); % update goodEpochs2 indices so they match the true epoch number
+    goodEpochs1 = goodNoWaveEpochs1(goodEpochs1);
+    goodEpochs2 = goodNoWaveEpochs2(goodEpochs2);
     goodEpochs2 = goodEpochs2 + epochOffset;
     goodEpochs = cat(1, goodEpochs1, goodEpochs2);
     

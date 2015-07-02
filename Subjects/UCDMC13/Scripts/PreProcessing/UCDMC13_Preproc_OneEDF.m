@@ -28,7 +28,7 @@ depthNames = {'LAD','LHD'};
 % (noSpikes), we remove dramatic perturbations in the EEG signal. In the
 % more conservative version (noWaves), we also remove sharp waves.
 labelsToRemove_noSpikes = {'spike','complex','other'};
-labelsToRemove_noWaves = {'sharpWave'};
+labelsToRemove_noWaves = {'spike','complex','other','sharpWave'};
 
 %% Set up filenames and paths
 
@@ -641,19 +641,33 @@ for thisDepth = 1:length(depthNames)
         noSpikeEEG = pop_saveset(noSpikeEEG, ['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisDepth} '_noSpikes.set']);
     end
     
+    % if the spikes overlap with a real event, it will be removed, so check
+    % for that now
+    origEventLatency  = cell2mat({EEG.event.latency});
+    [missingSpikeLatency, missingSpikeInd] = intersect(origEventLatency, indexes);
+    goodNoSpikeEpochs = [1:1:length(origEventLatency)]';
+    goodNoSpikeEpochs(missingSpikeInd) = [];
+    
     % Save version with spikes and waves removed
-    indexes = marks_label2index(noSpikeEEG.marks.time_info, labelsToRemove_noWaves, 'indexes', 'exact', 'on');
+    indexes = marks_label2index(EEG.marks.time_info, labelsToRemove_noWaves, 'indexes', 'exact', 'on');
     
     if isempty(indexes)
         warning('No sharp waves found. Saving the data as it is.')
         noWaveEEG = pop_saveset(noSpikeEEG, ['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
     else
-        [noWaveEEG,~] = pop_marks_select_data(noSpikeEEG, 'time marks', indexes);
+        [noWaveEEG,~] = pop_marks_select_data(EEG, 'time marks', indexes);
         noWaveEEG = pop_saveset(noWaveEEG, ['PreProcessing Intermediates/' save_stem '_unepoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
     end
     
+    % if the spikes or waves overlap with a real event, it will be removed,
+    % so check for that now
+    [missingWaveLatency, missingWaveInd] = intersect(origEventLatency, indexes);
+    goodNoWaveEpochs = [1:1:length(origEventLatency)]';
+    goodNoWaveEpochs(missingWaveInd) = [];
+    
     %% Save cleaned epoched data with spikes removed
     [newEEG, goodEpochs] = pop_epoch(noSpikeEEG,{'11' '12' '21' '22'},[eStart eEnd]);
+    goodEpochs = goodNoSpikeEpochs(goodEpochs);
     
     % Save epoched data
     pop_saveset(newEEG, ['Epoched Data/' subjectID '_' teleporter '_epoched_' depthNames{thisDepth} '_noSpikes.set']);
@@ -663,6 +677,7 @@ for thisDepth = 1:length(depthNames)
     
     %% Save cleaned epoched data with spikes AND waves removed
     [newEEG, goodEpochs] = pop_epoch(noWaveEEG,{'11' '12' '21' '22'},[eStart eEnd]);
+    goodEpochs = goodNoWaveEpochs(goodEpochs);
      
     % Save epoched data
     pop_saveset(newEEG, ['Epoched Data/' subjectID '_' teleporter '_epoched_' depthNames{thisDepth} '_noSpikes_noWaves.set']);
