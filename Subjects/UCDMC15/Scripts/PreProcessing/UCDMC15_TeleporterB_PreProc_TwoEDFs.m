@@ -1046,5 +1046,6 @@ for thisDepth = 1:length(depthNames)
     
     % Save list of good epochs for this electrode
     save(['Mat Files/' subject_id '_' teleporter '_' depthNames{thisDepth} '_noSpikes_noWaves_goodEpochs.mat'],'goodEpochs');
+    save(['Mat Files/' subject_id '_' teleporter '_' depthNames{thisDepth} '_noSpikes_noWaves_unepoched_goodEpochs.mat'], 'goodNoWaveEpochs1', 'goodNoWaveEpochs2');
     
 end
