@@ -43,3 +43,5 @@ for (thisRow in 1:nrow(sessionInfo)) {
   
   allData <- rbind(allData, subjectData)
 }
+
+save(file = 'Rda/allRawData.Rda', list = c('allData'))
