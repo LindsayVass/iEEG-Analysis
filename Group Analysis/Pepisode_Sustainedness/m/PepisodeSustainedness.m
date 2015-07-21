@@ -169,7 +169,7 @@ for thisDepth = 1:length(depthNames)
                 [sustainednessTable] = calcAllFreqPepisodeSustainedness(powerDistribution, frequencies, eegData, EEG.srate, EEG.times, 95, 2);
                 sustainednessTable = updateTable(sustainednessTable, subjectID, teleporter, chanNames{thisChan}, thisTrial, timePointNames{thisTimePoint}, spaceType, timeType);
                 
-                if thisTrial == 1
+                if thisDepth == 1 && thisChan == 1 && thisTrial == 1
                     allSustainednessTable = sustainednessTable;
                 else
                     allSustainednessTable = [allSustainednessTable; sustainednessTable];
