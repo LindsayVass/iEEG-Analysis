@@ -63,12 +63,14 @@ cleanCharData <- cleanCharData %>%
   mutate(ObservationID = paste(ElectrodeID, ObservationID, sep = "_"))
 
 # Cut up the frequencies into bands
-frequencies    <- unique(cleanCharData$Frequency)
-freqBandBreaks <- c(0, 4, 8, 12, 30, 182)
-freqBandNames  <- c("Delta", "Theta", "Alpha", "Beta", "Gamma")
-cleanCharData <- cleanCharData %>%
+frequencies <- unique(cleanCharData$Frequency)
+minFreq <- (3/1830) * 1000 # need to fit at least 3 cycles in 1830 ms
+freqBandBreaks <- c(0, 8, 12, 30, 182)
+freqBandNames  <- c("Delta-Theta", "Alpha", "Beta", "Gamma")
+
+cleanCharData  <- cleanCharData %>%
   mutate(FrequencyBand = cut(Frequency, freqBandBreaks, labels = freqBandNames)) %>%
-  select(-Frequency)
+  filter(Frequency > minFreq)
 
 # Divide time points into pre/tele/post bins
 timeBinBreaksNt <- c(-1830, 0, 1831, 3661)
