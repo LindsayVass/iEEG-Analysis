@@ -90,4 +90,4 @@ for thisFreq = 1:length(frequencies)
 end
 
 sustainednessTable.Properties.VariableNames = {'Onset', 'Offset', 'Duration', 'Frequency'};
-sustainednessTable(1,:) = [];
+sustainednessTable(1,:) = []; % remove NaN that was placeholder in initialized table
