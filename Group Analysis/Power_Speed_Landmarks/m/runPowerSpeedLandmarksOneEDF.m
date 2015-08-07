@@ -1,5 +1,5 @@
 function [meanLogPowerVals, speedWhite, landmarkClean] = runPowerSpeedLandmarksOneEDF(behavioralPath, timeSyncPath, unepochedEEGPath, frequencies, chanName, intervalMs)
-% [newRegressor] = factorRegressor(stringRegressor, mappings)
+% [meanLogPowerVals, speedWhite, landmarkClean] = runPowerSpeedLandmarksOneEDF(behavioralPath, timeSyncPath, unepochedEEGPath, frequencies, chanName, intervalMs)
 %
 % Purpose: Perform an analysis to extract mean log(power) values, avatar
 %   speed, and landmark richness for each segment of the navigation data.
