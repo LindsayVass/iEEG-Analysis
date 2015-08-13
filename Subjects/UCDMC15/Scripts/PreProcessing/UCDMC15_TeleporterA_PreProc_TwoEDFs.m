@@ -416,245 +416,11 @@ if exist([subject_dir 'Mat Files/' subject_id '_' teleporter '_Epochs_Entry.mat'
     answer = questdlg(question, questTitle, button1, button2, button2);
     
     if strcmpi(button2,answer) == 1
-        % load the unity text file
-        fid  = fopen(unityDataPath);
-        
-        if fixFile == 1
-            txtdata = textscan(fid,'%d%f%f%s%s%s%s%f%f%f','delimiter',',','Headerlines',1,'EndOfLine','\r\n');
-        else
-            txtdata = textscan(fid,'%d%f%f%s%s%s%s%f%f%f','delimiter',',','Headerlines',1);
-        end
-        
-        fclose(fid);
-        
-        systemTime = txtdata{3};
-        target     = txtdata{4};
-        spaceType  = txtdata{6};
-        timeType   = txtdata{7};
-        xPos       = txtdata{8};
-        zPos       = txtdata{9};
-        yRot       = txtdata{10};
-        
-        teleporterEntryInd = zeros(size(target));
-        for i = 1:length(target) - 1
-            
-            % First, find the time point when the target changes from "Teleporter"
-            % to a landmark
-            t = strfind(target{i},'Teleporter');
-            n = strfind(target{i+1},'Teleporter');
-            if (isempty(t))
-                continue
-            elseif t > 0 && isempty(n) == 1
-                
-                % Get the xPos, zPos, and yRot from 5 samples before
-                % teleportation event
-                targetX = xPos(i-5);
-                targetZ = zPos(i-5);
-                targetY = yRot(i-5);
-                
-                % Find all samples between t0 and t-3 seconds that match that XYZ
-                matchX = find(xPos == targetX);
-                matchX(matchX < (i-150)) = [];
-                
-                matchZ = find(zPos == targetZ);
-                matchZ(matchZ < (i-150)) = [];
-                
-                matchY = find(yRot == targetY);
-                matchY(matchY < (i-150)) = [];
-                
-                % Find the earliest time point match
-                minX = min(matchX);
-                minZ = min(matchZ);
-                minY = min(matchY);
-                
-                % Find the max among the minimum timepoints
-                allMin = cat(1,minX,minZ,minY);
-                trueEntry = max(allMin);
-                
-                teleporterEntryInd(trueEntry) = 1;
-                
-            end
-            
-            if i == length(target) - 1 % if it's the last teleportation event, there's no next target
-                
-                % Get the xPos, zPos, and yRot from 5 samples before
-                % teleportation event
-                targetX = xPos(end-5);
-                targetZ = zPos(end-5);
-                targetY = yRot(end-5);
-                
-                % Find all samples between t0 and t-3 seconds that match that XYZ
-                matchX = find(xPos == targetX);
-                matchX(matchX < (end-150)) = [];
-                
-                matchZ = find(zPos == targetZ);
-                matchZ(matchZ < (end-150)) = [];
-                
-                matchY = find(yRot == targetY);
-                matchY(matchY < (end-150)) = [];
-                
-                % Find the earliest time point match
-                minX = min(matchX);
-                minZ = min(matchZ);
-                minY = min(matchY);
-                
-                % Find the max among the minimum timepoints
-                allMin = cat(1,minX,minZ,minY);
-                trueEntry = max(allMin);
-                
-                teleporterEntryInd(trueEntry) = 1;
-                
-            end
-        end
-        
-        % extract systemTime, space, and time, for each event
-        teleporterEntryInd = logical(teleporterEntryInd);
-        epochs = systemTime(teleporterEntryInd);
-        epochsSpace = spaceType(teleporterEntryInd);
-        epochsTime = timeType(teleporterEntryInd);
-        
-        
-        % Convert epochs from ticks to EEG bins
-        
-        teleporterInds = find(teleporterEntryInd);
-        epochsEDF1 = [];
-        epochsEDF2 = [];
-        
-        %  load tick/EEG conversions for each EDF
-        load(['Mat Files/' save_stems{1} '_pulse_timing.mat']);
-        indEEG1 = indEEG;
-        unityTicks1 = unityTicks;
-        
-        load(['Mat Files/' save_stems{2} '_pulse_timing.mat']);
-        indEEG2 = indEEG;
-        unityTicks2 = unityTicks;
-        
-        % Loop through trials and find the onset time by fitting a line to the nearby pulses
-        fitRange = 5;
-        for thisTrial = 1:length(teleporterInds)
-            
-            onsetTick = systemTime(teleporterInds(thisTrial));
-            
-            if (onsetTick - unityTicks1(end) < 0) % if trial in EDF1
-                
-                % find the pulse time (in ticks) closest to our tick
-                tickDiff  = abs(onsetTick - unityTicks1);
-                minDiffInd = find(tickDiff == min(tickDiff));
-                
-                % get a range of values before and after
-                fitInds = [minDiffInd-fitRange:1:minDiffInd+fitRange];
-                
-                % get fit of line using the inds selected above
-                fit_P = polyfit(unityTicks1(fitInds),indEEG1(fitInds),1);
-                fit_y = polyval(fit_P,unityTicks1(fitInds));
-                onsetBin = round(onsetTick*fit_P(1) + fit_P(2));
-                
-                h = figure;
-                plot(unityTicks1(fitInds),indEEG1(fitInds),'k*')
-                hold on;
-                plot(unityTicks1(fitInds),fit_y,'-')
-                scatter(onsetTick,onsetBin,'ro')
-                
-                % make sure the fit looks good or else quit
-                answer = questdlg('Does the fit look good?');
-                if(strcmpi(answer,'Yes') ~= 1)
-                    break
-                end
-                
-                close(h);
-                
-                epochsEDF1(end+1) = onsetBin;
-                
-            elseif (onsetTick - unityTicks2(1) < 0) % trial in lost EEG between EDF files
-                continue
-            else % trial in EDF2
-                
-                % find the pulse time (in ticks) closest to our tick
-                tickDiff  = abs(onsetTick - unityTicks2);
-                minDiffInd = find(tickDiff == min(tickDiff));
-                
-                % get a range of values before and after
-                fitInds = [minDiffInd-fitRange:1:minDiffInd+fitRange];
-                
-                % get fit of line using the inds selected above
-                fit_P = polyfit(unityTicks2(fitInds),indEEG2(fitInds),1);
-                fit_y = polyval(fit_P,unityTicks2(fitInds));
-                onsetBin = round(onsetTick*fit_P(1) + fit_P(2));
-                
-                h = figure;
-                plot(unityTicks2(fitInds),indEEG2(fitInds),'k*')
-                hold on;
-                plot(unityTicks2(fitInds),fit_y,'-')
-                scatter(onsetTick,onsetBin,'ro')
-                
-                % make sure the fit looks good or else quit
-                answer = questdlg('Does the fit look good?');
-                if(strcmpi(answer,'Yes') ~= 1)
-                    break
-                end
-                
-                close(h);
-                
-                epochsEDF2(end+1) = onsetBin;
-                
-            end
-        end
-        
-        
-        % For each epoch, set the trial type
-        
-        % SPACE
-        % Near Space  = 1
-        % Far Space   = 2
-        
-        % TIME
-        % Short Time  = 1
-        % Long Time   = 2
-        
-        % TYPE
-        % Near Space Short Time = 1
-        % Near Space Long Time  = 2
-        % Far Space Short Time  = 3
-        % Far Space Long Time   = 4
-        
-        
-        eSpace = zeros(size(epochs));
-        eTime  = eSpace;
-        eType  = eSpace;
-        
-        for thisEpoch = 1:length(epochs)
-            
-            if strcmpi(epochsSpace(thisEpoch),'Near') == 1
-                eSpace(thisEpoch) = 1;
-            else
-                eSpace(thisEpoch) = 2;
-            end
-            
-            if strcmpi(epochsTime(thisEpoch),'Short') == 1
-                eTime(thisEpoch) = 1;
-            else
-                eTime(thisEpoch) = 2;
-            end
-            
-            if eSpace(thisEpoch) == 1 && eTime(thisEpoch) == 1
-                eType(thisEpoch) = 1;
-            elseif eSpace(thisEpoch) == 1 && eTime(thisEpoch) == 2
-                eType(thisEpoch) = 2;
-            elseif eSpace(thisEpoch) == 2 && eTime(thisEpoch) == 1
-                eType(thisEpoch) = 3;
-            elseif eSpace(thisEpoch) == 2 && eTime(thisEpoch) == 2
-                eType(thisEpoch) = 4;
-            end
-            
-            
-        end
-        
-        % Save the results
-        epochs_saveFile = [subject_dir 'Mat Files/' subject_id '_' teleporter '_Epochs_Entry.mat'];
-        save(epochs_saveFile,'epochsEDF1','epochsEDF2','eSpace','eTime','eType');
+        redoEpochs = 1;
     end
-    
-else
+end
+
+if redoEpochs == 1
     
     % load the unity text file
     fid  = fopen(unityDataPath);
@@ -753,12 +519,12 @@ else
     epochsSpace = spaceType(teleporterEntryInd);
     epochsTime = timeType(teleporterEntryInd);
     
-    
     % Convert epochs from ticks to EEG bins
     
     teleporterInds = find(teleporterEntryInd);
     epochsEDF1 = [];
     epochsEDF2 = [];
+    missingEpochs = [];
     
     %  load tick/EEG conversions for each EDF
     load(['Mat Files/' save_stems{1} '_pulse_timing.mat']);
@@ -770,8 +536,8 @@ else
     unityTicks2 = unityTicks;
     
     % Loop through trials and find the onset time by fitting a line to the nearby pulses
-    
     fitRange = 5;
+    showFit = 0;
     for thisTrial = 1:length(teleporterInds)
         
         onsetTick = systemTime(teleporterInds(thisTrial));
@@ -784,30 +550,32 @@ else
             
             % get a range of values before and after
             fitInds = [minDiffInd-fitRange:1:minDiffInd+fitRange];
-            fitInds(fitInds > length(indEEG1)) = [];
             
             % get fit of line using the inds selected above
             fit_P = polyfit(unityTicks1(fitInds),indEEG1(fitInds),1);
             fit_y = polyval(fit_P,unityTicks1(fitInds));
             onsetBin = round(onsetTick*fit_P(1) + fit_P(2));
             
-            h = figure;
-            plot(unityTicks1(fitInds),indEEG1(fitInds),'k*')
-            hold on;
-            plot(unityTicks1(fitInds),fit_y,'-')
-            scatter(onsetTick,onsetBin,'ro')
-            
-            % make sure the fit looks good or else quit
-            answer = questdlg('Does the fit look good?');
-            if(strcmpi(answer,'Yes') ~= 1)
-                break
+            if showFit == 1
+                h = figure;
+                plot(unityTicks1(fitInds),indEEG1(fitInds),'k*')
+                hold on;
+                plot(unityTicks1(fitInds),fit_y,'-')
+                scatter(onsetTick,onsetBin,'ro')
+                
+                % make sure the fit looks good or else quit
+                answer = questdlg('Does the fit look good?');
+                if(strcmpi(answer,'Yes') ~= 1)
+                    break
+                end
+                
+                close(h);
             end
-            
-            close(h);
             
             epochsEDF1(end+1) = onsetBin;
             
         elseif (onsetTick - unityTicks2(1) < 0) % trial in lost EEG between EDF files
+            missingEpochs(end + 1) = thisTrial;
             continue
         else % trial in EDF2
             
@@ -817,26 +585,27 @@ else
             
             % get a range of values before and after
             fitInds = [minDiffInd-fitRange:1:minDiffInd+fitRange];
-            fitInds(fitInds < 1) = [];
             
             % get fit of line using the inds selected above
             fit_P = polyfit(unityTicks2(fitInds),indEEG2(fitInds),1);
             fit_y = polyval(fit_P,unityTicks2(fitInds));
             onsetBin = round(onsetTick*fit_P(1) + fit_P(2));
             
-            h = figure;
-            plot(unityTicks2(fitInds),indEEG2(fitInds),'k*')
-            hold on;
-            plot(unityTicks2(fitInds),fit_y,'-')
-            scatter(onsetTick,onsetBin,'ro')
-            
-            % make sure the fit looks good or else quit
-            answer = questdlg('Does the fit look good?');
-            if(strcmpi(answer,'Yes') ~= 1)
-                break
+            if showFit == 1
+                h = figure;
+                plot(unityTicks2(fitInds),indEEG2(fitInds),'k*')
+                hold on;
+                plot(unityTicks2(fitInds),fit_y,'-')
+                scatter(onsetTick,onsetBin,'ro')
+                
+                % make sure the fit looks good or else quit
+                answer = questdlg('Does the fit look good?');
+                if(strcmpi(answer,'Yes') ~= 1)
+                    break
+                end
+                
+                close(h);
             end
-            
-            close(h);
             
             epochsEDF2(end+1) = onsetBin;
             
@@ -894,7 +663,7 @@ else
     
     % Save the results
     epochs_saveFile = [subject_dir 'Mat Files/' subject_id '_' teleporter '_Epochs_Entry.mat'];
-    save(epochs_saveFile,'epochsEDF1','epochsEDF2','eSpace','eTime','eType');
+    save(epochs_saveFile,'epochsEDF1','epochsEDF2','missingEpochs','eSpace','eTime','eType');
 end
 
 %% Epoch the EEG data
