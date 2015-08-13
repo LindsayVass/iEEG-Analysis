@@ -528,6 +528,7 @@ if redoEpochs == 1
     epochsEDF1 = [];
     epochsEDF2 = [];
     missingEpochs = [];
+    missingEpochInds = [];
     
     %  load tick/EEG conversions for each EDF
     load(['Mat Files/' save_stems{1} '_pulse_timing.mat']);
@@ -579,7 +580,8 @@ if redoEpochs == 1
             epochsEDF1(end+1) = onsetBin;
             
         elseif (onsetTick - unityTicks2(1) < 0) % trial in lost EEG between EDF files
-            missingEpochs(end+1) = thisTrial;
+            missingEpochs(end+1) = onsetTick;
+            missingEpochInds(end + 1) = thisTrial;
             continue
         else % trial in EDF2
             
@@ -669,7 +671,7 @@ if redoEpochs == 1
     
     % Save the results
     epochs_saveFile = [subject_dir 'Mat Files/' subject_id '_' teleporter '_Epochs_Entry.mat'];
-    save(epochs_saveFile,'epochsEDF1','epochsEDF2', 'missingEpochs','eSpace','eTime','eType');
+    save(epochs_saveFile,'epochsEDF1','epochsEDF2', 'missingEpochs','missingEpochInds','eSpace','eTime','eType');
 end
 
 
