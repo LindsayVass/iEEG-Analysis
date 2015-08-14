@@ -9,6 +9,7 @@
 library(dplyr)
 library(reshape2)
 
+load('Rda/allCleanData.Rda')
 
 # Wilcoxon signed-rank at each electrode and frequency band ---------------
 
@@ -102,3 +103,4 @@ sigMarkers <- wilcoxonSigResults %>%
   filter(BinomialTestP < 0.05) %>%
   mutate(Count = Count + 0.2) 
 
+save(file = 'Rda/allAnalyzedData.Rda', list = c('wilcoxonSigResults', 'wilcoxonResults', 'sigMarkers'))

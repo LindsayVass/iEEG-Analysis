@@ -8,6 +8,8 @@ library(dplyr)
 
 dir.create('Figures')
 
+load('Rda/allAnalyzedData.Rda')
+
 # Plot group data ---------------------------------------------------------
 
 wilcoxonPlot <- wilcoxonSigResults %>%

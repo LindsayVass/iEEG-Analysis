@@ -5,6 +5,8 @@
 
 library(dplyr)
 
+load('Rda/allRawData.Rda')
+
 cleanData <- allData
 
 # Put our conditions in order
@@ -33,3 +35,5 @@ freqBandNames  <- c("Delta-Theta","Alpha","Beta","Gamma")
 cleanData <- cleanData %>%
   mutate(FrequencyBand = cut(Frequency, freqBandBreaks, labels = freqBandNames)) %>%
   select(ElectrodeID, TrialNumber, TrialSpaceType, TrialTimeType, TimePoint, FrequencyBand, Pepisode)
+
+save(file = 'Rda/allCleanData.Rda', list = 'cleanData')
