@@ -33,3 +33,5 @@ freqBandNames  <- c("Delta", "Theta", "Alpha", "Beta", "Gamma")
 cleanData <- cleanData %>%
   mutate(FrequencyBand = cut(Frequency, freqBandBreaks, labels = freqBandNames)) %>%
   select(ElectrodeID, TrialNumber, TrialSpaceType, TrialTimeType, TimePoint, FrequencyBand, Power)
+
+save(file = 'Rda/allCleanData.Rda', list = 'cleanData')

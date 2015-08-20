@@ -104,3 +104,4 @@ sigMarkers <- wilcoxonSigResults %>%
   filter(BinomialTestP < 0.05) %>%
   mutate(Count = Count + 0.2) 
 
+save(file = 'Rda/allAnalyzedData.Rda', list = c('sigMarkers', 'wilcoxonResults', 'wilcoxonSigResults'))
