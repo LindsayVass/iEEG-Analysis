@@ -1,5 +1,5 @@
-function [meanLogPowerVals, speedWhite, landmarkClean] = runPowerSpeedLandmarksTwoEDFs(behavioralPath, pulseTimingPaths, unepochedEEGPaths, frequencies, chanName, intervalMs)
-% [meanLogPowerVals, speedWhite, landmarkClean] = runPowerSpeedLandmarksTwoEDFs(behavioralPath, pulseTimingPaths, unepochedEEGPaths, frequencies, chanName, intervalMs)
+function [meanLogPowerVals, speedWhite, landmarkClean] = runPowerSpeedLandmarksTwoEDFs(behavioralPath, pulseTimingPaths, unepochedEEGPaths, frequencies, chanName, intervalMs, teleporterEpochsPath, eegSamplingRate)
+% [meanLogPowerVals, speedWhite, landmarkClean] = runPowerSpeedLandmarksTwoEDFs(behavioralPath, pulseTimingPaths, unepochedEEGPaths, frequencies, chanName, intervalMs, teleporterEpochsPath, eegSamplingRate)
 %
 % Purpose: Perform an analysis to extract mean log(power) values, avatar
 %   speed, and landmark richness for each segment of the navigation data.
@@ -20,6 +20,11 @@ function [meanLogPowerVals, speedWhite, landmarkClean] = runPowerSpeedLandmarksT
 %   frequencies: vector of frequencies at which to extract power chanName:
 %   string indicating the name of the electrode intervalMs: length of the
 %   desired epoch in milliseconds (e.g., 200)
+%   teleporterEpochsPath: path to the mat file containing the onsets of the
+%       teleportation epochs in unix ticks, to be excluded from analysis;
+%       in the case of one EDF, there is one variable (epochsEDF); in the
+%       case of two EDFs, there are two variables (epochsEDF1 & epochsEDF2)
+%   eegSamplingRate: sampling rate of the EEG data in Hz
 %
 % OUTPUT:
 %   meanLogPowerVals: frequencies x epochs matrix containing the mean
@@ -40,7 +45,7 @@ epochLabel = 3;
 [systemTimeStart, ~, landmarkTypeSamp, speedSamp] = sampleBehavioralData(systemTime, xPos, zPos, intervalMs);
 
 % convert system time in ticks to EEG time in indices
-[epochOnsets, EDF1inds, EDF2inds, ~] = getEpochOnsets(pulseTimingPaths, systemTimeStart);
+[epochOnsets, EDF1inds, EDF2inds, ~, removedOnsets1, removedOnsets2] = getEpochOnsets(pulseTimingPaths, systemTimeStart, teleporterEpochsPath, eegSamplingRate);
 
 % identify good epochs
 epochOnsets1 = epochOnsets{1};
@@ -53,8 +58,8 @@ unepochedEEG2Path = unepochedEEGPaths{2};
 [~, goodEpochs2] = makeMiniEpochs(epochOnsets2, epochLabel, epochInterval, unepochedEEG2Path);
 
 % update regressors
-[landmarkClean1, landmarkClean2] = cleanRegressor(landmarkTypeSamp, EDF1inds, EDF2inds, goodEpochs1, goodEpochs2);
-[speedClean1, speedClean2]       = cleanRegressor(speedSamp, EDF1inds, EDF2inds, goodEpochs1, goodEpochs2);
+[landmarkClean1, landmarkClean2] = cleanRegressor(landmarkTypeSamp, EDF1inds, EDF2inds, goodEpochs1, goodEpochs2, removedOnsets1, removedOnsets2);
+[speedClean1, speedClean2]       = cleanRegressor(speedSamp, EDF1inds, EDF2inds, goodEpochs1, goodEpochs2, removedOnsets1, removedOnsets2);
 speedWhite1 = prewhiten(speedClean1);
 speedWhite2 = prewhiten(speedClean2);
 epochOnsets1 = epochOnsets1(goodEpochs1);

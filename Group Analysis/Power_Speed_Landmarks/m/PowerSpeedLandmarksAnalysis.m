@@ -21,12 +21,17 @@
 %
 % Author: Lindsay Vass
 % Date: 7 August 2015
+%
+% Revisions:
+%   13 August 2015 - Exclude teleportation epochs
 
+clear all; close all; clc;
 
 % parameters
 intervalMs  = 200; % length of the data segments in milliseconds
 frequencies = logspace(log(1)/log(10),log(181)/log(10),31); % log-spaced frequencies to use for analysis
 subjectsDir = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/';
+eegSampling = 512; % sampling rate in Hz
 
 load('/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Subject Info/SessionInfo.mat');
 
@@ -35,7 +40,7 @@ sessionInfo(1).behavioral = {'s1_patientTeleporterData.txt'};
 sessionInfo(2).behavioral = {'s2_patientTeleporterData.txt', 's2_patientTeleporterData 2.txt'};
 sessionInfo(3).behavioral = {'s3_FindStore_TeleporterA_FIXED.txt', 's3_FindStore_TeleporterB_FIXED.txt'};
 
-for thisSubject = 3:size(sessionInfo, 2)
+for thisSubject = 1:size(sessionInfo, 2)
     
     subjectID = sessionInfo(thisSubject).subjectID;
     
@@ -48,19 +53,20 @@ for thisSubject = 3:size(sessionInfo, 2)
             electrode  = sessionInfo(thisSubject).chanList{thisElectrode};
             numEDFs    = sessionInfo(thisSubject).numEDFs(thisSession);
             behavioral = sessionInfo(thisSubject).behavioral{thisSession}; 
+            epochsPath = [subjectsDir subjectID '/Mat Files/' subjectID '_' teleporter '_Epochs_Entry.mat'];
             
             if numEDFs == 1
                 behavioralPath   = [subjectsDir subjectID '/Behavioral Data/' teleporter '/' behavioral];
                 timeSyncPath     = [subjectsDir subjectID '/Mat Files/' subjectID '_' teleporter '_time_sync.mat'];
                 unepochedEEGPath = [subjectsDir subjectID '/PreProcessing Intermediates/' subjectID '_' teleporter '_unepoched_' electrode(1:3) '_marked.set'];
-                [meanLogPowerVals, speedWhite, landmarkClean] = runPowerSpeedLandmarksOneEDF(behavioralPath, timeSyncPath, unepochedEEGPath, frequencies, electrode, intervalMs);
+                [meanLogPowerVals, speedWhite, landmarkClean] = runPowerSpeedLandmarksOneEDF(behavioralPath, timeSyncPath, unepochedEEGPath, frequencies, electrode, intervalMs, epochsPath, eegSampling);
             else
                 behavioralPath    = [subjectsDir subjectID '/Behavioral Data/' teleporter '/' behavioral];
                 pulseTimingPaths  = {[subjectsDir subjectID '/Mat Files/' subjectID '_' teleporter '_EDF1_pulse_timing.mat'], ...
                                      [subjectsDir subjectID '/Mat Files/' subjectID '_' teleporter '_EDF2_pulse_timing.mat']};
                 unepochedEEGPaths = {[subjectsDir subjectID '/PreProcessing Intermediates/' subjectID '_' teleporter '_EDF1_unepoched_' electrode(1:3) '_marked.set'], ...
                                      [subjectsDir subjectID '/PreProcessing Intermediates/' subjectID '_' teleporter '_EDF2_unepoched_' electrode(1:3) '_marked.set']};
-                [meanLogPowerVals, speedWhite, landmarkClean] = runPowerSpeedLandmarksTwoEDFs(behavioralPath, pulseTimingPaths, unepochedEEGPaths, frequencies, electrode, intervalMs);
+                [meanLogPowerVals, speedWhite, landmarkClean] = runPowerSpeedLandmarksTwoEDFs(behavioralPath, pulseTimingPaths, unepochedEEGPaths, frequencies, electrode, intervalMs, epochsPath, eegSampling);
             end
             
             powerVector     = reshape(meanLogPowerVals', [], 1);
