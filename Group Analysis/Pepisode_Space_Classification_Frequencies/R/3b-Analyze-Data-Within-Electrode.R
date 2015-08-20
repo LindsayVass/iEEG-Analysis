@@ -288,14 +288,4 @@ sigClassification <- allClassificationResults %>%
   filter(CorrP < 0.05) %>%
   summarise(NSigElectrodes = n())
 
-
-
-
-
-
-
-
-
-
-
 save(file = 'Rda/allClassificationResults.Rda', list = c('classificationResults', 'ttestResults', 'meanClassification'))
