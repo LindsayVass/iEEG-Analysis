@@ -372,6 +372,7 @@ analysisInfo <- list(navInput     = list(navNtPostEntryDur, navNtPostExitDur, na
 meanPostEpisodeDuration    <- data.frame()
 allPostEpisodePermData     <- data.frame()
 sigElectrodePostEpisodeDur <- data.frame()
+
 for (thisFreqBand in 1:nlevels(navNtPostEntryDur$FrequencyBand)) {
   cat('\n\nFrequency Band', thisFreqBand, 'of', nlevels(navNtPostEntryDur$FrequencyBand))
   for (thisAnalysis in 1:length(analysisInfo)) {
@@ -408,13 +409,15 @@ for (thisFreqBand in 1:nlevels(navNtPostEntryDur$FrequencyBand)) {
     }
     
     # randomly select one permutation from each electrode to build a distribution
-    # of how many significant electrodes you get by chance'
+    # of how many significant electrodes you get by chance
     allPostEpisodePermData <- allPostEpisodePermData %>%
       group_by(ElectrodeID)
     elecPerm <- data.frame()
     for (thisPerm in 1:nperm) {
       sampleData <- allPostEpisodePermData %>%
         sample_n(1) %>%
+        inner_join(allPostEpisodePermData, by = c("W", "P", "ElectrodeID")) %>% # get corrected P value
+        unique()  %>%
         filter(P < 0.05)
       thisPerm <- data.frame(V = nrow(sampleData))
       elecPerm <- rbind(elecPerm, thisPerm)
@@ -422,29 +425,39 @@ for (thisFreqBand in 1:nlevels(navNtPostEntryDur$FrequencyBand)) {
     sortedElecPerm <- sortPerms(elecPerm) %>%
       mutate(FrequencyBand = freqBand,
              TimeType = analysisInfo$timeType[[thisAnalysis]],
-             BoundaryType = analysisInfo$boundaryType[[thisAnalysis]]) %>%
-      unique()
+             BoundaryType = analysisInfo$boundaryType[[thisAnalysis]])
     sigElectrodePostEpisodeDur <- rbind(sigElectrodePostEpisodeDur, sortedElecPerm)
   }
 }
 
 # determine whether more electrodes than expected by chance
+postEpisodeDurSigElectrodes <- meanPostEpisodeDuration %>%
+  filter(CorrP < 0.05) %>%
+  group_by(FrequencyBand, TimeType, BoundaryType) %>%
+  summarise(NSigElectrodes = n()) %>%
+  group_by(FrequencyBand, TimeType, BoundaryType)
+
 sigElectrodePostEpisodeDur <- sigElectrodePostEpisodeDur %>%
   group_by(FrequencyBand, TimeType, BoundaryType) %>%
   rename(NSigElectrodes = V)
 
-maxSigElectrodePerms <- calcMaxSigElectrodes(sigElectrodePostEpisodeDur) %>%
-  sortPerms() %>%
-  rename(NSigElectrodes = V) %>%
-  unique()
-
-postEpisodeDurSigElectrodes <- meanPostEpisodeDuration %>%
-  filter(CorrP < 0.05) %>%
-  group_by(FrequencyBand, TimeType, BoundaryType) %>%
-  summarise(NSigElectrodes = n())
-postEpisodeDurSigElectrodes <- inner_join(postEpisodeDurSigElectrodes, maxSigElectrodePerms)
+permList <- vector(mode = "list", length = nperm)
+for (i in 1:nperm) {
+  theSample <- sigElectrodePostEpisodeDur %>%
+    sample_n(1)
+  permList[[i]] <- max(theSample$NSigElectrodes)
+}
+permVec <- unlist(permList) %>%
+  sort(decreasing = TRUE)
+maxElectrodes <- data.frame()
+for (i in min(permVec):max(permVec)) {
+  thisResult <- data.frame(NSigElectrodes = i,
+                           ElecP = min(which(permVec == i)) / length(permVec))
+  maxElectrodes <- rbind(maxElectrodes, thisResult)
+}
+postEpisodeDurSigElectrodes <- inner_join(postEpisodeDurSigElectrodes, maxElectrodes)
 
 
 # Save data ---------------------------------------------------------------
 
-save(file = 'Rda/allAnalyzedData.Rda', list = c('pepisodeSigElectrodes', 'pepisodeResults', 'episodeDurSigElectrodes', 'meanEpisodeDuration', 'postEpisodeDurSigElectrodes', 'meanPostEpisodeDuration'))
+save(file = 'Rda/allAnalyzedData.Rda', list = c('pepisodeSigElectrodes', 'pepisodeResults', 'episodeDurSigElectrodes', 'meanEpisodeDuration', 'postEpisodeDurSigElectrodes', 'meanPostEpisodeDuration', 'maxSigElectrodePerms'))
