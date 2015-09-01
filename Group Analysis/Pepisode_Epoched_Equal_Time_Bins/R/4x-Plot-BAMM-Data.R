@@ -97,8 +97,8 @@ ggsave('Figures/BAMM2015/Pepisode_by_Timepoint_Histogram_DeltaThetaOnly.png')
 validData <- cleanData %>%
   filter(FrequencyBand == "Delta" | FrequencyBand == "Theta") %>%
   group_by(ElectrodeID, FrequencyBand, TimePoint) %>%
-  summarise(Pepisode = mean(MeanPepisode),
-            SEM = sd(MeanPepisode) / sqrt(n()))
+  summarise(SEM = sd(Pepisode) / sqrt(n()),
+            Pepisode = mean(Pepisode))
 differenceData <- validData %>%
   dcast(ElectrodeID + FrequencyBand ~ TimePoint, value.var = 'Pepisode') %>%
   mutate(Difference = Tele - ((Pre1 + Post1) / 2)) %>%
@@ -125,7 +125,9 @@ p <- differenceData %>%
         axis.title.x = element_blank(),
         axis.title.y = element_text(vjust = 1.5),
         strip.background = element_rect(colour = "black", size = 0.75),
-        panel.border = element_rect(colour = "black", size = 0.75, fill = NA)) +
+        panel.border = element_rect(colour = "black", size = 0.75, fill = NA),
+        panel.background = element_rect(fill = "black"),
+        panel.grid.major.y = element_line(colour = "dimgray")) +
   ylab(expression("Mean P"["Episode"])) +
   facet_grid(~ FrequencyBand) +
   scale_y_continuous(limits = c(0,1))
@@ -149,7 +151,9 @@ blankP <- differenceData %>%
         axis.title.x = element_blank(),
         axis.title.y = element_text(vjust = 1.5),
         strip.background = element_rect(colour = "black", size = 0.75),
-        panel.border = element_rect(colour = "black", size = 0.75, fill = NA)) +
+        panel.border = element_rect(colour = "black", size = 0.75, fill = NA),
+        panel.background = element_rect(fill = "black"),
+        panel.grid.major.y = element_line(colour = "dimgray")) +
   ylab(expression("Mean P"["Episode"])) +
   facet_grid(~ FrequencyBand) +
   scale_y_continuous(limits = c(0,1))

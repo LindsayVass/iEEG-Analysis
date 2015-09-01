@@ -44,7 +44,9 @@ p <- validData %>%
         axis.title.x = element_blank(),
         axis.title.y = element_text(vjust = 1.5),
         strip.background = element_rect(colour = "black", size = 0.75),
-        panel.border = element_rect(colour = "black", size = 0.75, fill = NA)) +
+        panel.border = element_rect(colour = "black", size = 0.75, fill = NA),
+        panel.background = element_rect(fill = "black"),
+        panel.grid.major.y = element_line(colour = "dimgray")) +
   ylab("Mean Duration (ms)") +
   facet_grid(~ TimeType, labeller = facetLabeller)
 p
@@ -67,11 +69,14 @@ pBlank <- validData %>%
         axis.title.x = element_blank(),
         axis.title.y = element_text(vjust = 1.5),
         strip.background = element_rect(colour = "black", size = 0.75),
-        panel.border = element_rect(colour = "black", size = 0.75, fill = NA)) +
+        panel.border = element_rect(colour = "black", size = 0.75, fill = NA),
+        panel.background = element_rect(fill = "black"),
+        panel.grid.major.y = element_line(colour = "dimgray")) +
   ylab("Mean Duration (ms)") +
   facet_grid(~ TimeType, labeller = facetLabeller)
 pBlank
 ggsave('Figures/BAMM2015/PostEntryEpisodeDuration_DeltaThetaOnly_LinePlot_BLANK.png')
+
 # Make plot of electrode counts -------------------------------------------
 
 postEpisodeElectrodeCounts <- meanPostEpisodeDuration %>%
