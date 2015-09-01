@@ -9,22 +9,83 @@
 #                  active navigation epoch. 
 #               2. Compare the duration of oscillatory episodes for teleporter
 #                  and navigation epochs. This analysis will identify episodes
-#                  that cross a boundary (either teleporter entry or exit) and
-#                  will test whether the mean duration of these episodes differs
-#                  between teleporter epochs and their matched navigation epochs.
+#                  that cross a boundary (teleporter entry) and
+#                  will test whether the mean duration of these episodes AFTER 
+#                  the boundary differs between teleporter epochs and their 
+#                  matched navigation epochs.
 #                  NB There is no true "boundary" event for the navigation epochs;
 #                  we are simply using the same temporal event structure as the
 #                  teleporter epochs.
-#               3. Similar to #2, we will compare how long the episode lasts
-#                  after the boundary event rather than the full duration.
+
 
 
 library(permute)
 library(reshape2)
 library(dplyr)
+library(broom)
+library(data.table)
 load('Rda/allCleanData.Rda')
 
 # Functions ---------------------------------------------------------------
+
+tidyWilcoxon <- function(inputData) {
+  NavGtTele <- tidy(inputData, NavGtTele) 
+}
+
+replicateData <- function(inputData, nrep) {
+  repData <- inputData[rep(1:nrow(inputData), times = nrep), ] %>%
+    mutate(Iteration = gl(nrep, nrow(inputData)))
+}
+
+shuffleData <- function(thisData, control, variable) {
+  ind <- which(names(thisData) == variable)
+  shuffleOrder <- shuffle(nrow(thisData), control = control)
+  thisData[[ind]] <- thisData[[ind]][shuffleOrder]
+  return(thisData)
+}
+
+getCorrectedP <- function(permData, trueData, trueOrPerm = "true") {
+  
+  if (tolower(trueOrPerm) == "perm") {
+    origData <- trueData
+    trueData <- trueData %>%
+      ungroup() %>%
+      select(-c(Iteration, ElectrodeIteration))
+  }
+  
+  trueData <- trueData %>%
+    mutate(Iteration = 0)
+  trueData$Iteration <- factor(trueData$Iteration)
+  
+  trueDataCorrected <- rbind(permData, trueData)
+  trueDataCorrected <- trueDataCorrected %>%
+    ungroup() %>%
+    group_by(ElectrodeID, FrequencyBand, TimePoint) 
+  
+  trueDataCorrected <- trueDataCorrected %>%
+    arrange(desc(statistic)) %>%
+    mutate(CorrP = row_number(desc(statistic)) / n()) %>%
+    filter(Iteration == 0)
+  
+  if (tolower(trueOrPerm) == "perm") {
+    trueDataCorrected <- trueDataCorrected %>%
+      select(-Iteration) %>%
+      inner_join(origData, by = c("ElectrodeID", "FrequencyBand", "statistic", "p.value", "TimePoint"))
+  }
+  
+  return(trueDataCorrected)
+}
+
+getElectrodeCorrectedP <- function(trueNSigElectrodes, permNSigElectrodes) {
+  permNSigElectrodes <- permNSigElectrodes %>%
+    c(trueNSigElectrodes) %>%
+    sort(decreasing = TRUE)
+  CorrP <- min(which(permNSigElectrodes == trueNSigElectrodes)) / length(permNSigElectrodes)
+}
+
+
+
+
 
 testPepisode <- function(dataFrame) {
   
@@ -161,198 +222,214 @@ calcMaxSigElectrodes <- function(dataFrame, nPerm = 1000) {
   return(maxElec)
 }
 
-# Pepisode Analysis -------------------------------------------------------
+
+
+# Pepisode Analysis (1) ---------------------------------------------------
+nperm <- 1000
 
 meanPepisode <- allPepisode %>%
   summarise(MeanTelePepisode = mean(TelePepisode), MeanNavPepisode = mean(NavPepisode)) %>%
   ungroup() %>%
   group_by(ElectrodeID, FrequencyBand, TimePoint)
 
-pepisodeResults <- data.frame()
-sigElectrodeResults <- data.frame()
-minTrials <- 5
+# get wilcoxon results for true data
+pepisodeTrueData <- meanPepisode %>%
+  do(NavGtTele = wilcox.test(.$MeanNavPepisode, .$MeanTelePepisode, alternative = "greater", paired = TRUE)) %>%
+  tidy(NavGtTele)
 
-for (thisFreqBand in 1:nlevels(meanPepisode$FrequencyBand)) {
-  
-  cat(paste('\nFrequency Band', thisFreqBand, 'of', nlevels(meanPepisode$FrequencyBand)))
-  
-  for (thisTimePoint in 1:nlevels(meanPepisode$TimePoint)) {
-    
-    cat(paste('\nTime Point', thisTimePoint, 'of', nlevels(meanPepisode$TimePoint)))
-    
-    allPermData <- data.frame()
-    
-    for (thisElectrode in 1:nlevels(meanPepisode$ElectrodeID)) {
-      
-      cat(paste('\nElectrode', thisElectrode, 'of', nlevels(meanPepisode$ElectrodeID)))
-      
-      # extract data
-      electrode <- levels(meanPepisode$ElectrodeID)[thisElectrode]
-      freqband  <- levels(meanPepisode$FrequencyBand)[thisFreqBand]
-      timepoint <- levels(meanPepisode$TimePoint)[thisTimePoint]
-      thisData  <- filterData(meanPepisode, electrode, freqband, timepoint)
-      
-      if (nrow(thisData) < minTrials) {
-        
-        trueResult <- data.frame(V = NA,
-                                 UncorrP = NA,
-                                 ElectrodeID = electrode,
-                                 FrequencyBand = freqband,
-                                 TimePoint = timepoint,
-                                 CorrP = NA)
-        next
-      }
-      
-      # run wilcoxon
-      trueResult <- testPepisode(thisData) %>%
-        mutate(ElectrodeID   = electrode,
-               FrequencyBand = freqband,
-               TimePoint     = timepoint)
-      
-      # run permutations
-      permData <- runPerms(thisData)
-      permDataPlusTrue   <- rbind(permData, trueResult$V)
-      sortedPermPlusTrue <- sortPerms(permDataPlusTrue)
-      trueP <- min(which(sortedPermPlusTrue == trueResult$V)) / nrow(sortedPermPlusTrue)
-      trueResult <- trueResult %>%
-        mutate(CorrP = trueP)
-      pepisodeResults <- rbind(pepisodeResults, trueResult)
-      
-      # save perm data for later perms on # of significant electrodes      
-      sortedPermData <- sortPerms(permData) %>%
-        mutate(ElectrodeID = electrode)
-      allPermData    <- rbind(allPermData, sortedPermData)
-      
-    }
-    
-    # randomly select one permutation from each electrode to build a distribution
-    # of how many significant electrodes you get by chance
-    nperm <- 1000
-    allPermData <- allPermData %>%
-      group_by(ElectrodeID)
-    elecPerm <- data.frame()
-    for (thisPerm in 1:nperm) {
-      sampleData <- allPermData %>%
-        sample_n(1) %>%
-        filter(P < 0.05)
-      thisPerm <- data.frame(V = nrow(sampleData))
-      elecPerm <- rbind(elecPerm, thisPerm)
-    }
-    sortedElecPerm <- sortPerms(elecPerm) %>%
-      mutate(FrequencyBand = freqband,
-             TimePoint = timepoint)
-    sigElectrodeResults <- rbind(sigElectrodeResults, sortedElecPerm)
-  }
+# get wilcoxon results for permuted data
+pepisodeData <- meanPepisode %>%
+  melt(c('ElectrodeID', 'RealTrialNumber', 'TimePoint', 'FrequencyBand')) %>%
+  mutate(Observation = paste(ElectrodeID, FrequencyBand, RealTrialNumber, TimePoint, sep = "_"))
+
+control <- how(within = Within(type = "free"), blocks = pepisodeData$Observation)
+permData <- pepisodeData %>%
+  ungroup() %>%
+  replicateData(nperm)
+
+pepisodePermResults <- vector(mode = "list", length = nperm)
+pb <- txtProgressBar (min = 1, max = nperm, style = 3)
+for (thisPerm in 1:nperm) {
+  setTxtProgressBar(pb, thisPerm)
+  pepisodePermResults[[thisPerm]] <- permData %>%
+    filter(Iteration == thisPerm) %>%
+    shuffleData(control, "value") %>%
+    group_by(ElectrodeID, FrequencyBand, RealTrialNumber, TimePoint) %>%
+    dcast(ElectrodeID + FrequencyBand + RealTrialNumber + TimePoint ~ variable, value.var = "value") %>%
+    group_by(ElectrodeID, FrequencyBand, TimePoint) %>%
+    do(NavGtTele = wilcox.test(.$MeanNavPepisode, .$MeanTelePepisode, alternative = "greater", paired = TRUE)) %>%
+    tidy(NavGtTele) %>%
+    mutate(Iteration = thisPerm)
 }
+pepisodePermResults <- rbindlist(pepisodePermResults)
 
-# determine whether more electrodes than expected by chance
-sigElectrodeResults <- sigElectrodeResults %>%
+# add corrected P values
+pepisodeTrueDataCorrected <- pepisodeTrueData %>%
+  group_by(ElectrodeID, FrequencyBand, TimePoint) %>%
+  getCorrectedP(pepisodePermResults, ., "true")
+pepisodeTrueNSigElectrodes <- pepisodeTrueDataCorrected %>%
+  ungroup() %>%
   group_by(FrequencyBand, TimePoint) %>%
-  rename(NSigElectrodes = V)
-
-maxSigElectrodePerms <- calcMaxSigElectrodes(sigElectrodeResults) %>%
-  sortPerms() %>%
-  rename(NSigElectrodes = V) %>%
-  unique()
-
-pepisodeSigElectrodes <- pepisodeResults %>%
   filter(CorrP < 0.05) %>%
-  group_by(FrequencyBand, TimePoint) %>%
-  summarise(NSigElectrodes = n())
-pepisodeSigElectrodes <- inner_join(pepisodeSigElectrodes, maxSigElectrodePerms)
+  summarise(Count = n())
 
-# Oscillatory episode duration analysis -----------------------------------
+# determine number of significant electrodes expected by chance
 
-navNtEntryDur <- meanOscDuration(navSustain, 0, "NT")
-navFtEntryDur <- meanOscDuration(navSustain, 0, "FT")
-navNtExitDur  <- meanOscDuration(navSustain, 1830, "NT")
-navFtExitDur  <- meanOscDuration(navSustain, 2830, "FT")
-
-teleNtEntryDur <- meanOscDuration(teleSustain, 0, "NT")
-teleFtEntryDur <- meanOscDuration(teleSustain, 0, "FT")
-teleNtExitDur  <- meanOscDuration(teleSustain, 1830, "NT")
-teleFtExitDur  <- meanOscDuration(teleSustain, 2830, "FT")
-
-analysisInfo <- list(navInput     = list(navNtEntryDur, navNtExitDur, navFtEntryDur, navFtExitDur),
-                     teleInput    = list(teleNtEntryDur, teleNtExitDur, teleFtEntryDur, teleFtExitDur),
-                     timeType     = list("NT", "NT", "FT", "FT"),
-                     boundaryType = list("Entry", "Exit", "Entry", "Exit"))
-
-meanEpisodeDuration    <- data.frame()
-allEpisodePermData     <- data.frame()
-sigElectrodeEpisodeDur <- data.frame()
-for (thisFreqBand in 1:nlevels(navNtEntryDur$FrequencyBand)) {
-  cat('\n\nFrequency Band', thisFreqBand, 'of', nlevels(navNtEntryDur$FrequencyBand))
-  for (thisAnalysis in 1:length(analysisInfo)) {
-    cat('\nAnalysis', thisAnalysis, 'of', length(analysisInfo), '\nElectrode ')
-    for (thisElectrode in 1:nlevels(navNtEntryDur$ElectrodeID)) {
-      cat(thisElectrode, ' ')
-      # run wilcoxon
-      electrode <- levels(navNtEntryDur$ElectrodeID)[thisElectrode]
-      freqBand  <- levels(navNtEntryDur$FrequencyBand)[thisFreqBand]
-      
-      thisResult <- testOscDuration(analysisInfo$navInput[[thisAnalysis]],
-                                    analysisInfo$teleInput[[thisAnalysis]],
-                                    electrode,
-                                    freqBand,
-                                    analysisInfo$timeType[[thisAnalysis]],
-                                    analysisInfo$boundaryType[[thisAnalysis]],
-                                    "MeanDuration")
-      
-      # run permutations
-      if (is.na(thisResult$inputData) == FALSE) {
-        permData <- thisResult$inputData
-        thePerms <- runOscPerms(permData, thisResult$trueResult$W)
-        thePerms$sortedPerms <- cbind(thePerms$sortedPerms, data.frame(ElectrodeID = electrode))
-        allEpisodePermData   <- rbind(allEpisodePermData, thePerms$sortedPerms)
-        
-        thisResult$trueResult <- cbind(thisResult$trueResult, thePerms$trueP)
-        meanEpisodeDuration   <- rbind(meanEpisodeDuration, thisResult$trueResult)
-        
-      } else {
-        thisResult$trueResult <- cbind(thisResult$trueResult, data.frame(CorrP = NA))
-        meanEpisodeDuration   <- rbind(meanEpisodeDuration, thisResult$trueResult)
-      }
-    }
-    
-    # randomly select one permutation from each electrode to build a distribution
-    # of how many significant electrodes you get by chance
-    allEpisodePermData <- allEpisodePermData %>%
-      group_by(ElectrodeID)
-    elecPerm <- data.frame()
-    for (thisPerm in 1:nperm) {
-      sampleData <- allEpisodePermData %>%
-        sample_n(1) %>%
-        filter(P < 0.05)
-      thisPerm <- data.frame(V = nrow(sampleData))
-      elecPerm <- rbind(elecPerm, thisPerm)
-    }
-    sortedElecPerm <- sortPerms(elecPerm) %>%
-      mutate(FrequencyBand = freqBand,
-             TimeType = analysisInfo$timeType[[thisAnalysis]],
-             BoundaryType = analysisInfo$boundaryType[[thisAnalysis]])
-    sigElectrodeEpisodeDur <- rbind(sigElectrodeEpisodeDur, sortedElecPerm)
-  }
+pepisodePermAnalysisList <- pepisodePermResults %>%
+  select(ElectrodeID, FrequencyBand, TimePoint, Iteration) %>%
+  group_by(ElectrodeID, FrequencyBand, TimePoint) %>%
+  unique()
+pepisodePermMaxElectrodes <- vector(mode = "list", length = nperm)
+for (thisPerm in 1:nperm) {
+  pepisodePermMaxElectrodes[[thisPerm]] <- pepisodePermAnalysisList %>%
+    sample_n(1) %>%
+    mutate(ElectrodeIteration = thisPerm)
 }
-
-# determine whether more electrodes than expected by chance
-sigElectrodeEpisodeDur <- sigElectrodeEpisodeDur %>%
-  group_by(FrequencyBand, TimeType, BoundaryType) %>%
-  rename(NSigElectrodes = V)
-
-maxSigElectrodePerms <- calcMaxSigElectrodes(sigElectrodeEpisodeDur) %>%
-  sortPerms() %>%
-  rename(NSigElectrodes = V) %>%
-  unique()
-
-episodeDurSigElectrodes <- meanEpisodeDuration %>%
+pepisodePermMaxElectrodes <- rbindlist(pepisodePermMaxElectrodes) %>%
+  inner_join(pepisodePermResults) %>%
+  group_by(ElectrodeID, FrequencyBand, TimePoint) %>%
+  mutate(CorrP = row_number(desc(statistic)) / n())
+pepisodePermNSigElectrodes <- pepisodePermMaxElectrodes %>%
+  group_by(FrequencyBand, TimePoint, ElectrodeIteration) %>%
   filter(CorrP < 0.05) %>%
-  group_by(FrequencyBand, TimeType, BoundaryType) %>%
-  summarise(NSigElectrodes = n())
-episodeDurSigElectrodes <- inner_join(episodeDurSigElectrodes, maxSigElectrodePerms)
+  summarise(Count = n()) %>%
+  ungroup() %>%
+  group_by(ElectrodeIteration) %>%
+  summarise(MaxCount = max(Count))
+  
+pepisodeTrueNSigElectrodesCorrected <- pepisodeTrueNSigElectrodes %>%
+  group_by(FrequencyBand, TimePoint, Count) %>%
+  do(CorrP = getElectrodeCorrectedP(.$Count, pepisodePermNSigElectrodes$MaxCount))
 
 
 # Oscillatory episode post-event duration analysis ------------------------
+
+navNtPostEntryDur <- meanPostEventOscDuration(navSustain, 0, "NT") %>%
+  mutate(TimeType = "NT",
+         Condition = "Navigation")
+navFtPostEntryDur <- meanPostEventOscDuration(navSustain, 0, "FT") %>%
+  mutate(TimeType = "FT",
+         Condition = "Navigation")
+
+teleNtPostEntryDur <- meanPostEventOscDuration(teleSustain, 0, "NT") %>%
+  mutate(TimeType = "NT",
+         Condition = "Teleportation")
+teleFtPostEntryDur <- meanPostEventOscDuration(teleSustain, 0, "FT") %>%
+  mutate(TimeType = "FT",
+         Condition = "Teleportation")
+
+allData <- rbind(navNtPostEntryDur, navFtPostEntryDur, teleNtPostEntryDur, teleFtPostEntryDur) %>%
+  group_by(ElectrodeID, FrequencyBand, TimeType, Condition) %>%
+  filter(n() > 5) %>%
+  summarise(MeanDuration = mean(MeanPostEventDuration),
+            SEM = sd(MeanPostEventDuration) / sqrt(n()))
+navData <- allData %>%
+  filter(Condition == "Navigation")
+teleData <- allData %>%
+  filter(Condition == "Teleportation")
+
+validData <- inner_join(navData, teleData, by = c('ElectrodeID', 'FrequencyBand', 'TimeType')) %>%
+  mutate(Difference = (MeanDuration.y - MeanDuration.x)) %>%
+  select(ElectrodeID, TimeType, Difference, FrequencyBand) %>%
+  inner_join(allData)
+
+# get wilcoxon results for true data
+durationObs <- rbind(navNtPostEntryDur, navFtPostEntryDur, teleNtPostEntryDur, teleFtPostEntryDur) %>%
+  group_by(ElectrodeID, FrequencyBand, TimeType, Condition) %>%
+  select(-RealTrialNumber) %>%
+  dcast(ElectrodeID + FrequencyBand + TimeType ~ Condition, fun.aggregate = length, value.var = "MeanPostEventDuration") %>%
+  filter(Navigation >= 5 & Teleportation >=5) %>%
+  select(-c(Navigation, Teleportation))
+durationTrueData <- rbind(navNtPostEntryDur, navFtPostEntryDur, teleNtPostEntryDur, teleFtPostEntryDur) %>%
+  select(-RealTrialNumber) %>%
+  inner_join(durationObs) %>%
+  dcast(ElectrodeID + FrequencyBand + TimeType ~ Condition, fun.aggregate = list, value.var = "MeanPostEventDuration") %>%
+  group_by(ElectrodeID, FrequencyBand, TimeType) %>%
+  do(NavGtTele = wilcox.test(unlist(.$Navigation), unlist(.$Teleportation), alternative = "greater")) %>%
+  tidy(NavGtTele)
+
+# get wilcoxon results for permuted data
+durationData <- rbind(navNtPostEntryDur, navFtPostEntryDur, teleNtPostEntryDur, teleFtPostEntryDur) %>%
+  select(-RealTrialNumber) %>%
+  inner_join(durationObs) %>%
+  mutate(Observation = paste(ElectrodeID, FrequencyBand, TimeType, sep = "_"))
+
+control <- how(within = Within(type = "free"), blocks = durationData$Observation)
+
+permDurationData <- durationData %>%
+  ungroup() %>%
+  replicateData(nperm)
+
+durationPermResults <- vector(mode = "list", length = nperm)
+pb <- txtProgressBar(min = 1, max = nperm, style = 3)
+for (thisPerm in 1:nperm) {
+  setTxtProgressBar(pb, thisPerm)
+  durationPermResults[[thisPerm]] <- permDurationData %>%
+    filter(Iteration == thisPerm) %>%
+    shuffleData(control, "MeanPostEventDuration") %>%
+    dcast(ElectrodeID + FrequencyBand + TimeType ~ Condition, fun.aggregate = list, value.var = "MeanPostEventDuration") %>%
+    group_by(ElectrodeID, FrequencyBand, TimeType) %>%
+    do(NavGtTele = wilcox.test(unlist(.$Navigation), unlist(.$Teleportation), alternative = "greater")) %>%
+    tidy(NavGtTele)
+}
+
+durationPermResults <- rbindlist(durationPermResults)
+
+# add corrected p values
+durationTrueDataCorrected <- durationTrueData %>%
+  group_by(ElectrodeID, FrequencyBand, TimeType) %>%
+  getCorrectedP(durationPermResults, ., "true")
+durationTrueNSigElectrodes <- durationTrueDataCorrected %>%
+  ungroup() %>%
+  group_by(FrequencyBand, TimeType) %>%
+  filter(CorrP < 0.05) %>%
+  summarise(Count = n())
+
+# determine number of significant electrodes expected by chance
+durationPermAnalysisList <- durationPermResults %>%
+  select(ElectrodeID, FrequencyBand, TimeType, Iteration) %>%
+  group_by(ElectrodeID, FrequencyBand, TimeType) %>%
+  unique()
+durationPermMaxElectrodes <- vector(mode = "list", length = nperm)
+for (thisPerm in 1:nperm) {
+  durationPermMaxElectrodes[[thisPerm]] <- durationPermAnalysisList %>%
+    sample_n(1) %>%
+    mutate(ElectrodeIteration = thisPerm)
+}
+durationPermMaxElectrodes <- rbindlist(durationPermMaxElectrodes) %>%
+  inner_join(durationPermResults) %>%
+  group_by(ElectrodeID, FrequencyBand, TimeType) %>%
+  mutate(CorrP = row_number(desc(statistic)) / n())
+durationPermNSigElectrodes <- durationPermMaxElectrodes %>%
+  group_by(FrequencyBand, TimeType, ElectrodeIteration) %>%
+  filter(CorrP < 0.05) %>%
+  summarise(Count = n()) %>%
+  ungroup() %>%
+  group_by(ElectrodeIteration) %>%
+  summarise(MaxCount = max(Count))
+durationTrueNSigElectrodesCorrected <- durationTrueNSigElectrodes %>%
+  group_by(FrequencyBand, TimeType, Count) %>%
+  do(CorrP = getElectrodeCorrectedP(.$Count, durationPermNSigElectrodes$MaxCount))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Old analysis ------------------------------------------------------------
 
 navNtPostEntryDur <- meanPostEventOscDuration(navSustain, 0, "NT")
 navFtPostEntryDur <- meanPostEventOscDuration(navSustain, 0, "FT")
