@@ -9,7 +9,7 @@ library(ggplot2)
 library(ggthemes)
 load('Rda/allClassificationResults.Rda')
 
-theData <- classificationResults %>%
+theData <- allClassificationResults %>%
   group_by(ElectrodeID, Model) %>%
   summarise(SEM = sd(Accuracy) / sqrt(n()), Accuracy = mean(Accuracy))
 
