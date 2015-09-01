@@ -138,21 +138,16 @@ cleanData <- cleanData %>%
   mutate(TrialID = paste(ElectrodeID, TrialNumber, sep = "_"))
 cleanData$Frequency <- factor(cleanData$Frequency)
 
-# ## skipping electrodes because not enough observations
-# badElectrodes <- c(21, 22, 23, 24, 29, 30, 31, 32, 35, 36, 37, 38)
 
 numIterations <- 1000
 
 allClassificationResults <- data.frame()
+allMeanClassificationResults <- data.frame()
 allBootstrapClassification <- data.frame()
 for (thisElectrode in 1:nlevels(cleanData$ElectrodeID)) {
   
   classificationResults <- data.frame()
   permutationResults    <- data.frame()
-  
-#   if (thisElectrode %in% badElectrodes) {
-#     next()
-#   }
   
   cat(paste0('\n\n\n\n\n\n\n\n\n\n\n\n', levels(cleanData$ElectrodeID)[thisElectrode], '\n\n\n\n\n\n\n\n\n\n\n\n'))
   
@@ -213,10 +208,13 @@ for (thisElectrode in 1:nlevels(cleanData$ElectrodeID)) {
     
   }
   
+  allClassificationResults <- rbind(allClassificationResults, classificationResults)
+  
   meanClassification <- classificationResults %>%
     group_by(Model) %>%
     summarise(TVal = t.test(Accuracy, mu = 0.5, alternative = "greater")$statistic,
               UncorrP = t.test(Accuracy, mu = 0.5, alternative = "greater")$p.value,
+              SEM = sd(Accuracy) / sqrt(n()),
               Accuracy = mean(Accuracy))
   
   # bootstrap permutation values
@@ -250,7 +248,7 @@ for (thisElectrode in 1:nlevels(cleanData$ElectrodeID)) {
     corrPResults <- rbind(corrPResults, thisResult)
   }
   meanClassification <- inner_join(meanClassification, corrPResults, by = "Model")
-  allClassificationResults <- rbind(allClassificationResults, meanClassification)
+  allMeanClassificationResults <- rbind(allMeanClassificationResults, meanClassification)
 }
 
 allBootstrapClassification <- allBootstrapClassification %>%
@@ -283,9 +281,9 @@ for (thisIteration in 1:numIterations) {
 maxElectrodeP <- sortPerms(maxElectrodePermutations) %>%
   unique()
 
-sigClassification <- allClassificationResults %>%
+sigClassification <- allMeanClassificationResults %>%
   group_by(Model) %>%
   filter(CorrP < 0.05) %>%
   summarise(NSigElectrodes = n())
 
-save(file = 'Rda/allClassificationResults.Rda', list = c('classificationResults', 'ttestResults', 'meanClassification'))
+save(file = 'Rda/allClassificationResults.Rda', list = c('allClassificationResults', 'allMeanClassificationResults', 'maxElectrodeP', 'sigClassification', 'maxElectrodePermutations', 'allBootstrapClassification'))
