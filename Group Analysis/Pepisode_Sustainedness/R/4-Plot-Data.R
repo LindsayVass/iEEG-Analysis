@@ -5,8 +5,16 @@
 
 library(dplyr)
 library(ggplot2)
+library(ggthemes)
 
 load('Rda/allAnalyzedData.Rda')
+load('Rda/postEventDurationData.Rda')
+
+# Functions ---------------------------------------------------------------
+
+facetLabeller <- function(variable, value) {
+  label <- facetLabels[value]
+}
 
 
 # Plot pepisode histogram -------------------------------------------------
@@ -78,3 +86,37 @@ postEpisodeDurHist <- postEpisodeElectrodeCounts %>%
   ylab("# of Significant Electrodes")
 postEpisodeDurHist
 ggsave(filename = 'Figures/Histogram_Post_Event_Episode_Duration_Tele_lt_Nav.png')
+
+# Make plot of individual electrode effects for post-event episode duration ----
+
+validData$TimeType <- factor(validData$TimeType, c('NT', 'FT'))
+facetLabels <- c('\nShort Teleport Time\n', '\nLong Teleport Time\n')
+
+for (i in 1:nlevels(validData$FrequencyBand)) {
+  p <- validData %>%
+    filter(FrequencyBand == levels(FrequencyBand)[i]) %>%
+    ggplot(aes(x = Condition, 
+               y = MeanDuration, 
+               ymin = MeanDuration - SEM, 
+               ymax = MeanDuration + SEM,
+               group = ElectrodeID,
+               colour = Difference)) +
+    geom_point(size = 5) +
+    geom_pointrange() +
+    geom_line() +
+    scale_color_gradientn(colours = rainbow(4)) +
+    theme_stata() +
+    theme(plot.background = element_rect(fill = "white"),
+          text = element_text(size = 30),
+          legend.text = element_blank(),
+          legend.title = element_text(size = 24),
+          axis.title.x = element_blank(),
+          axis.title.y = element_text(vjust = 1.5),
+          strip.background = element_rect(colour = "black", size = 0.75),
+          panel.border = element_rect(colour = "black", size = 0.75, fill = NA)) +
+    ylab("Mean Duration (ms)") +
+    facet_grid(~ TimeType, labeller = facetLabeller)
+  p
+  
+  ggsave(paste0('Figures/PostEntryEpisodeDuration_LinePlot_', levels(validData$FrequencyBand)[i], '.png'))
+}
