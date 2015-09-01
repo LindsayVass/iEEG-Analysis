@@ -137,10 +137,12 @@ for thisDepth = 1:length(depthNames)
             for thisTimePoint = 1:length(trialOnsets)
                 
                 timeInds = find(EEG.times >= trialOnsets(thisTimePoint) & EEG.times <= trialOffsets(thisTimePoint));
+                
                 eegData = EEG.data(chanInd, timeInds, thisTrial);
                 
+                
                 [~, percentTimePepisode] = calcEpochedPepisodeLKV(powerDistribution, frequencies, eegData, EEG.srate, 95, 3);
-              
+                
                 % Add to output array
                 if strcmpi('1', EEG.event(thisTrial).type(1)) == 1
                     spaceType = 'NS';
@@ -168,7 +170,7 @@ for thisDepth = 1:length(depthNames)
                     thisRow = thisRow + 1;
                     
                 end % thisFreq
-                                               
+                
                 
             end % thisTimePoint
             
