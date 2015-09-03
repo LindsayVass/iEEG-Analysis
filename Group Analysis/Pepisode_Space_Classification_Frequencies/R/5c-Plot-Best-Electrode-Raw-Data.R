@@ -110,10 +110,10 @@ for (thisElec in 1:nlevels(bestData$ElectrodeID)) {
                     y = y,
                     shape = 22,
                     fill = Frequency)) +
-    geom_text(data = pepisodeVals, aes(x = x, y = y, label = Label, hjust = 0)) +
-    expand_limits(x = c(0, 1.1 * max(allEEG$Time)))
+    geom_text(data = pepisodeVals, aes(x = x, y = y, label = Label, hjust = 0), size = 2) +
+    expand_limits(x = c(0, 1.07 * max(allEEG$Time)))
    
 
     
-    ggsave(paste0('Figures/Single Electrode/RawTrace_', electrode, '.pdf'))
+    ggsave(paste0('Figures/Single Electrode/RawTrace_', electrode, '.pdf'), width = 10.7)
 }
