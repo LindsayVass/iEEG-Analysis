@@ -108,9 +108,9 @@ topClass <- topClass %>%
   mutate(Frequency = NA,
          MeanNS = NA,
          MeanFS = NA)
-for (thisResult in 1:nlevels(classData$ElectrodeID)) {
+for (thisResult in 1:nrow(topClass)) {
   meanFreqPepisode <- classData %>%
-    filter(ElectrodeID == levels(ElectrodeID)[thisResult]) %>%
+    filter(ElectrodeID == as.character(topClass$ElectrodeID[thisResult])) %>%
     group_by(TrialSpaceType, Frequency) %>%
     summarise(MeanPepisode = mean(Pepisode),
               SEM = sd(Pepisode) / sqrt(n()))
@@ -124,15 +124,17 @@ for (thisResult in 1:nlevels(classData$ElectrodeID)) {
     geom_pointrange() +
     scale_x_log10(breaks = unique(meanFreqPepisode$Frequency), labels = round(unique(meanFreqPepisode$Frequency), digits = 2)) + 
     theme_few() +
-    theme(text = element_text(size = 24),
+    theme(text = element_text(size = 18),
           axis.title.y = element_text(vjust = 1),
           axis.title.x = element_text(vjust = -0.25),
-          legend.position = c(0.15, 0.88)) +
+          axis.ticks = element_line(colour = "black"),
+          panel.border = element_rect(colour = "black", fill = NA),
+          legend.position = c(0.15, 0.75)) +
     labs(x = 'Frequency (Hz)',
-         y = 'Mean Pepisode',
+         y = expression('Mean P'['Episode']),
          colour = 'Distance Teleported')
   scatterP
-  ggsave(paste0('Figures/Single Electrode/Scatter_Pepisode_Each_Distance_Frequency_', as.character(levels(classData$ElectrodeID)[thisResult]), '_', as.character(topClass$Model[which(topClass$ElectrodeID == levels(classData$ElectrodeID)[thisResult])]), '.png'))
+  ggsave(paste0('Figures/Single Electrode/Scatter_Pepisode_Each_Distance_Frequency_', as.character(topClass$ElectrodeID[thisResult]), '_', as.character(topClass$TrialTimeType[thisResult]), '.pdf'), useDingbats = FALSE)
   
   # find frequency showing biggest difference
   bigDiff <- meanFreqPepisode %>%
@@ -205,19 +207,20 @@ for (thisResult in 1:nlevels(classData$ElectrodeID)) {
     annotation_custom(grob = textGrob(accuracyLabel, gp = gpar(fontsize = 24)), xmin = -15, xmax = Inf, ymin = 0, ymax = Inf) +
     coord_flip() +
     theme_few() +
-    theme(text = element_text(size = 24),
+    theme(text = element_text(size = 18),
           axis.text.y = element_blank(),
           axis.ticks.y = element_blank(),
           legend.position = c(0.15, 0.88),
+          axis.ticks = element_line(colour = "black"),
+          panel.border = element_rect(colour = "black", fill = NA),
           axis.title.x = element_text(vjust = -0.5)) +
     labs(y = '% Iterations Classified as "Short"',
          x = 'Trial',
          fill = 'Distance Teleported') 
   trialClassP
-  ggsave(paste0('Figures/Single Electrode/Bar_Trial_Classification_', as.character(levels(classData$ElectrodeID)[thisResult]), '_', as.character(topClass$Model[which(topClass$ElectrodeID == levels(classData$ElectrodeID)[thisResult])]), '.png'))
+  ggsave(paste0('Figures/Single Electrode/Bar_Trial_Classification_', as.character(levels(classData$ElectrodeID)[thisResult]), '_', as.character(topClass$Model[which(topClass$ElectrodeID == levels(classData$ElectrodeID)[thisResult])]), '.pdf'))
 
 }
-
 
 
 # Find best trials for raw data plots -------------------------------------
@@ -228,6 +231,8 @@ bestData <- cleanData %>%
   group_by(ElectrodeID, TrialSpaceType) %>%
   arrange(MeanDiff) %>%
   top_n(1, -MeanDiff) %>%
+  group_by(ElectrodeID, TrialSpaceType) %>%
+  sample_n(1) %>% # if multiple trials with same value
   select(ElectrodeID, TrialNumber, TrialSpaceType, TrialTimeType, Frequency, Pepisode)
 
 #dir.create('mat')

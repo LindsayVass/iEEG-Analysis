@@ -16,15 +16,16 @@ timesFTCalc = [-3000 5830];
 timesNT = [1 1830];
 timesFT = [1 2830];
 
-intervalsNT = timesNTCalc(:,2) - timesNTCalc(:, 1) + 1;
-intervalsFT = timesFTCalc(:,2) - timesFTCalc(:, 1) + 1;
+intervalsNT = timesNT(:,2) - timesNT(:, 1) + 1;
+intervalsFT = timesFT(:,2) - timesFT(:, 1) + 1;
 minInterval = min([intervalsNT; intervalsFT]);
 
 durationThresh = 3; % duration for pepisode in cycles
 minFrequency   = durationThresh / (minInterval / 1000);
+maxFrequency   = 8;
 frequencies    = logspace(log(1)/log(10),log(181)/log(10),31); % 31 log-spaced frequencies, as in Watrous 2011
-excludedFreqs  = frequencies(frequencies < minFrequency);
-frequencies    = frequencies(frequencies >= minFrequency);
+excludedFreqs  = frequencies(frequencies < minFrequency | frequencies > maxFrequency);
+frequencies    = frequencies(frequencies >= minFrequency & frequencies <= maxFrequency);
 
 tol = 0.005; % acceptable difference between previously measured pepisode and pepisode measured in this script
 
@@ -73,11 +74,13 @@ for thisTrial = 1:length(bestData.TrialNumber)
     % restrict to this frequency
     thisFrequency = bestData.Frequency(thisTrial);
     frequencyList = cell2mat({powerDistribution.frequency});
-    freqInd       = find(frequencyList == thisFrequency);
+    %freqInd       = find(frequencyList == thisFrequency);
+    freqInd       = find(frequencies == thisFrequency);
     
     [binaryMatrix, percentTimePepisode] = calcEpochedPepisodeLKV(powerDistribution, frequencies, eegData, EEG.srate, 95, 3);
     
-    allBinaryData{thisTrial} = binaryMatrix(freqInd, teleInds);
+    %allBinaryData{thisTrial} = binaryMatrix(freqInd, teleInds);
+    allBinaryData{thisTrial} = binaryMatrix(:, teleInds);
     
     if (abs(bestData.Pepisode(thisTrial)) - mean(binaryMatrix(freqInd, teleInds))) > tol
         error('Pepisode does not match expected value.')
@@ -87,4 +90,4 @@ for thisTrial = 1:length(bestData.TrialNumber)
     
 end
 
-save('../mat/RawDataBestPepisodeTrials.mat', 'allEEGData', 'allBinaryData', 'eegTimes')
+save('../mat/RawDataBestPepisodeTrials_1-8Hz.mat', 'allEEGData', 'allBinaryData', 'eegTimes', 'frequencies')
