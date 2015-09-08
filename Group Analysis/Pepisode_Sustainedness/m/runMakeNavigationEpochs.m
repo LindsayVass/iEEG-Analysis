@@ -52,9 +52,31 @@ for thisSubject = 1:size(sessionInfo, 2)
                 
             end
             
+            if sessionInfo(thisSubject).numEDFs > 1
+                
+                EEG1path = ['/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/' subjectID '/Epoched Data/' subjectID '_' sessionID '_epoched_' electrodeID '_EDF1_navigation.set'];
+                EEG2path = ['/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/' subjectID '/Epoched Data/' subjectID '_' sessionID '_epoched_' electrodeID '_EDF2_navigation.set'];
+                saveEEG = ['/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/' subjectID '/Epoched Data/' subjectID '_' sessionID '_epoched_' electrodeID '_navigation.set'];
+                
+                if exist(EEG1path, 'file') == 0 & exist(EEG2path, 'file') ~= 0
+                    EEG2 = pop_loadset(EEG2path);
+                    pop_saveset(EEG2, saveEEG);
+                elseif exist(EEG1path, 'file') ~= 0 & exist(EEG2path, 'file') == 0
+                    EEG1 = pop_loadset(EEG1path);
+                    pop_saveset(EEG1, saveEEG);
+                elseif exist(EEG1path, 'file') ~=0 & exist(EEG2path, 'file') ~= 0
+                    EEG1 = pop_loadset(EEG1path);
+                    EEG2 = pop_loadset(EEG2path);
+                    mergeEEG = pop_mergeset(EEG1, EEG2);
+                    pop_saveset(mergeEEG, saveEEG);
+                else
+                    warning(['No EEG data found for ' subjectID ' ' sessionID ' ' electrodeID '.'])
+                end
+                
+            end
+            
         end
         
+        
     end
-    
-    
 end

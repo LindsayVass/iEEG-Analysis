@@ -39,7 +39,7 @@ function makeNavigationEpochs(thisSubject, thisSession, thisElectrode, fixFile, 
 % thisElectrode = 'LAD';
 % fixFile       = 1;
 % findStoreFileName = 's3_FindStore_TeleporterA_FIXED.txt';
-% thisEDF = 2;
+% thisEDF = 1;
 
 
 
@@ -269,7 +269,11 @@ if isempty(goodNavEpochs)
 else
     [newEEG, validEpochs] = pop_epoch(EEG,{'31', '32'},[-3 6]);
     goodNavEpochs = goodNavEpochs(validEpochs);
-    pop_saveset(newEEG, [subjectDir 'Epoched Data/' thisSubject '_' thisSession '_epoched_' thisElectrode '_navigation.set']);
+    if ~exist('thisEDF', 'var')
+        pop_saveset(newEEG, [subjectDir 'Epoched Data/' thisSubject '_' thisSession '_epoched_' thisElectrode '_navigation.set']);
+    else
+        pop_saveset(newEEG, [subjectDir 'Epoched Data/' thisSubject '_' thisSession '_epoched_' thisElectrode '_EDF' num2str(thisEDF) '_navigation.set']);
+    end
     
     % Save list of good epochs for this electrode
     if ~exist('thisEDF', 'var')
