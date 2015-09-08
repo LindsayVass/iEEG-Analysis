@@ -70,7 +70,39 @@ getCorrectedP <- function(permData, trueData, trueOrPerm = "true") {
   if (tolower(trueOrPerm) == "perm") {
     trueDataCorrected <- trueDataCorrected %>%
       select(-Iteration) %>%
-      inner_join(origData, by = c("ElectrodeID", "FrequencyBand", "statistic", "p.value", "TimePoint"))
+      inner_join(origData)
+  }
+  
+  return(trueDataCorrected)
+}
+
+getDurationCorrectedP <- function(permData, trueData, trueOrPerm = "true") {
+  
+  if (tolower(trueOrPerm) == "perm") {
+    origData <- trueData
+    trueData <- trueData %>%
+      ungroup() %>%
+      select(-c(Iteration, ElectrodeIteration))
+  }
+  
+  trueData <- trueData %>%
+    mutate(Iteration = 0)
+  trueData$Iteration <- factor(trueData$Iteration)
+  
+  trueDataCorrected <- rbind(permData, trueData)
+  trueDataCorrected <- trueDataCorrected %>%
+    ungroup() %>%
+    group_by(ElectrodeID, FrequencyBand, TimeType) 
+  
+  trueDataCorrected <- trueDataCorrected %>%
+    arrange(desc(statistic)) %>%
+    mutate(CorrP = row_number(desc(statistic)) / n()) %>%
+    filter(Iteration == 0)
+  
+  if (tolower(trueOrPerm) == "perm") {
+    trueDataCorrected <- trueDataCorrected %>%
+      select(-Iteration) %>%
+      inner_join(origData)
   }
   
   return(trueDataCorrected)
@@ -370,7 +402,8 @@ for (thisPerm in 1:nperm) {
     dcast(ElectrodeID + FrequencyBand + TimeType ~ Condition, fun.aggregate = list, value.var = "MeanPostEventDuration") %>%
     group_by(ElectrodeID, FrequencyBand, TimeType) %>%
     do(NavGtTele = wilcox.test(unlist(.$Navigation), unlist(.$Teleportation), alternative = "greater")) %>%
-    tidy(NavGtTele)
+    tidy(NavGtTele) %>% 
+    mutate(Iteration = thisPerm)
 }
 
 durationPermResults <- rbindlist(durationPermResults)
@@ -378,7 +411,7 @@ durationPermResults <- rbindlist(durationPermResults)
 # add corrected p values
 durationTrueDataCorrected <- durationTrueData %>%
   group_by(ElectrodeID, FrequencyBand, TimeType) %>%
-  getCorrectedP(durationPermResults, ., "true")
+  getDurationCorrectedP(durationPermResults, ., "true")
 durationTrueNSigElectrodes <- durationTrueDataCorrected %>%
   ungroup() %>%
   group_by(FrequencyBand, TimeType) %>%
@@ -412,7 +445,14 @@ durationTrueNSigElectrodesCorrected <- durationTrueNSigElectrodes %>%
   do(CorrP = getElectrodeCorrectedP(.$Count, durationPermNSigElectrodes$MaxCount))
 
 
-
+save(file = 'Rda/allAnalyzedData.Rda', list = c('permData',
+                                                'pepisodePermResults',
+                                                'pepisodeTrueDataCorrected',
+                                                'pepisodeTrueNSigElectrodesCorrected',
+                                                'permDurationData',
+                                                'durationPermResults',
+                                                'durationTrueDataCorrected',
+                                                'durationTrueNSigElectrodesCorrected'))
 
 
 
@@ -537,4 +577,4 @@ postEpisodeDurSigElectrodes <- inner_join(postEpisodeDurSigElectrodes, maxElectr
 
 # Save data ---------------------------------------------------------------
 
-save(file = 'Rda/allAnalyzedData.Rda', list = c('pepisodeSigElectrodes', 'pepisodeResults', 'episodeDurSigElectrodes', 'meanEpisodeDuration', 'postEpisodeDurSigElectrodes', 'meanPostEpisodeDuration', 'maxSigElectrodePerms'))
+#save(file = 'Rda/allAnalyzedData.Rda', list = c('pepisodeSigElectrodes', 'pepisodeResults', 'episodeDurSigElectrodes', 'meanEpisodeDuration', 'postEpisodeDurSigElectrodes', 'meanPostEpisodeDuration', 'maxSigElectrodePerms'))
