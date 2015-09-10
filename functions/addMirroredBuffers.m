@@ -29,7 +29,7 @@ end
 
 % Calculate the lengthe of the buffer in milliseconds and in EEG samples
 bufferMS   = bufferCycles * 1 / min(frequencies) * 1000;
-bufferBins = bufferMS * 1/1000 * samplingRate;
+bufferBins = round(bufferMS * 1/1000 * samplingRate);
 numBuffers = ceil(bufferBins / length(eegData));
 
 bufferData = [];
