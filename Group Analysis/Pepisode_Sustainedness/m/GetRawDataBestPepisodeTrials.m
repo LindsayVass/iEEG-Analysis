@@ -4,8 +4,8 @@
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/eeglab13_4_4b/'))
 
 % output from ../R/4b-Select-Single-Trial-Data.R
-%inputMat = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Pepisode_Sustainedness/mat/bestSingleTrials.mat';
-inputMat = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Pepisode_Sustainedness/mat/testSingleTrials.mat';
+inputMat = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Pepisode_Sustainedness/mat/bestSingleTrials.mat';
+%inputMat = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Pepisode_Sustainedness/mat/testSingleTrials.mat';
 
 load(inputMat)
 
@@ -46,9 +46,12 @@ end
 
 
 conditions = {'nav', 'tele'};
-allEEGData    = cell(length(manualBestTrials.ElectrodeID), length(conditions));
-allBinaryData = cell(length(manualBestTrials.ElectrodeID), length(conditions));
-allEEGTimes   = cell(length(manualBestTrials.ElectrodeID), length(conditions));
+allNavEEGData     = cell(length(manualBestTrials.ElectrodeID), 1);
+allTeleEEGData    = allNavEEGData;
+allNavBinaryData  = allNavEEGData;
+allTeleBinaryData = allNavEEGData;
+allNavEEGTimes    = allNavEEGData;
+allTeleEEGTimes   = allNavEEGData;
 
 for thisObs = 1:length(manualBestTrials.RealTrialNumber)
     for navTele = 1:length(conditions)
@@ -78,10 +81,12 @@ for thisObs = 1:length(manualBestTrials.RealTrialNumber)
         % select the eeg data for analysis
         if strcmpi(conditions{navTele}, 'nav') == 1
             eegData = EEG.data(chanInd, eegInds, manualBestTrials.NavTrialNumber(thisObs));
+            allNavEEGData{thisObs} = eegData;
         else
             eegData = EEG.data(chanInd, eegInds, manualBestTrials.TeleTrialNumber(thisObs));
+            allTeleEEGData{thisObs} = eegData;
         end
-        allEEGData{thisObs, navTele} = eegData;
+        
         
         % load the power distribution file
         powerDistSaveFile = [subjectDir subjectData{thisObs, 1} '/Mat Files/Pepisode/Power Distributions/' subjectData{thisObs, 1} '_' subjectData{thisObs, 2} '_' subjectData{thisObs, 3} '_power_distribution.mat'];
@@ -93,20 +98,20 @@ for thisObs = 1:length(manualBestTrials.RealTrialNumber)
         
         [binaryMatrix, percentTimePepisode] = calcEpochedPepisodeLKV(powerDistribution, frequencies, eegData, EEG.srate, 95, 3);
         
-        allBinaryData{thisObs, navTele} = binaryMatrix(freqInd, :);
-        
         if strcmpi(conditions{navTele}, 'nav') == 1
             targetPepisode = manualBestTrials.NavPepisode(thisObs);
+            allNavBinaryData{thisObs} = binaryMatrix(freqInd, :);
+            allNavEEGTimes{thisObs} = EEG.times(eegInds);
         else
             targetPepisode = manualBestTrials.TelePepisode(thisObs);
+            allTeleBinaryData{thisObs} = binaryMatrix(freqInd, :);
+            allTeleEEGTimes{thisObs} = EEG.times(eegInds);
         end
         
         if (abs(targetPepisode - mean(binaryMatrix(freqInd, :)))) > tol
             error('Pepisode does not match expected value.')
         end
-        
-        eegTimes = EEG.times(eegInds);
     end
 end
 
-%save('../mat/bestSingleTrialsRawData.mat', 'allEEGData', 'allBinaryData', 'allEEGTimes')
+save('../mat/bestSingleTrialsRawData.mat', 'allNavEEGData', 'allTeleEEGData', 'allNavBinaryData', 'allTeleBinaryData', 'allNavEEGTimes', 'allTeleEEGTimes')
