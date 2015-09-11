@@ -268,11 +268,15 @@ meanPepisode <- allPepisode %>%
 pepisodeTrueData <- meanPepisode %>%
   do(NavGtTele = wilcox.test(.$MeanNavPepisode, .$MeanTelePepisode, alternative = "greater", paired = TRUE)) %>%
   tidy(NavGtTele)
+# pepisodeTrueData <- meanPepisode %>%
+#   do(NavGtTele = wilcox.test(.$MeanNavPepisode, .$MeanTelePepisode, alternative = "greater")) %>%
+#   tidy(NavGtTele)
 
 # get wilcoxon results for permuted data
 pepisodeData <- meanPepisode %>%
   melt(c('ElectrodeID', 'RealTrialNumber', 'TimePoint', 'FrequencyBand')) %>%
   mutate(Observation = paste(ElectrodeID, FrequencyBand, RealTrialNumber, TimePoint, sep = "_"))
+#  mutate(Observation = paste(ElectrodeID, FrequencyBand, TimePoint, sep = "_"))
 
 control <- how(within = Within(type = "free"), blocks = pepisodeData$Observation)
 permData <- pepisodeData %>%
@@ -290,6 +294,7 @@ for (thisPerm in 1:nperm) {
     dcast(ElectrodeID + FrequencyBand + RealTrialNumber + TimePoint ~ variable, value.var = "value") %>%
     group_by(ElectrodeID, FrequencyBand, TimePoint) %>%
     do(NavGtTele = wilcox.test(.$MeanNavPepisode, .$MeanTelePepisode, alternative = "greater", paired = TRUE)) %>%
+#    do(NavGtTele = wilcox.test(.$MeanNavPepisode, .$MeanTelePepisode, alternative = "greater")) %>%
     tidy(NavGtTele) %>%
     mutate(Iteration = thisPerm)
 }
