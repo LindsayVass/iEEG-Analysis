@@ -9,11 +9,11 @@
 library(plyr)
 library(ggplot2)
 library(ggthemes)
-library(dplyr)
 library(reshape2)
+library(dplyr)
 
 
-dir.create('Figures/BAMM2015/')
+#dir.create('Figures/BAMM2015/')
 
 load('Rda/allAnalyzedData_SepDeltaTheta.Rda')
 load('Rda/allCleanData_SepDeltaTheta.Rda')
@@ -22,6 +22,7 @@ load('Rda/allCleanData_SepDeltaTheta.Rda')
 # Histogram ---------------------------------------------------------------
 
 allAnalyses <- permResults %>%
+  as.data.frame() %>%
   select(FrequencyBand, Contrast) %>%
   unique() %>%
   anti_join(trueNSigElectrodesCorrected) %>%
@@ -106,6 +107,8 @@ differenceData <- validData %>%
   inner_join(validData)
 differenceData$TimePoint <- revalue(differenceData$TimePoint, c("Pre1" = "Pre", "Tele" = "Teleport", "Post1" = "Post"))
 
+colFun <- colorRampPalette(c("red", "orange", "black", "deepskyblue", "dodgerblue4"))
+
 p <- differenceData %>%
   ggplot(aes(x = TimePoint, 
              y = Pepisode, 
@@ -116,7 +119,7 @@ p <- differenceData %>%
   geom_point(size = 5) +
   geom_pointrange() +
   geom_line() +
-  scale_color_gradientn(colours = rainbow(4)) +
+  scale_color_gradientn(colours = colFun(5)) +
   theme_stata() +
   theme(plot.background = element_rect(fill = "white"),
         text = element_text(size = 30),
@@ -126,8 +129,8 @@ p <- differenceData %>%
         axis.title.y = element_text(vjust = 1.5),
         strip.background = element_rect(colour = "black", size = 0.75),
         panel.border = element_rect(colour = "black", size = 0.75, fill = NA),
-        panel.background = element_rect(fill = "black"),
-        panel.grid.major.y = element_line(colour = "dimgray")) +
+        #panel.background = element_rect(fill = "black"),
+        panel.grid.major.y = element_line(colour = "dimgray", linetype = "longdash")) +
   ylab(expression("Mean P"["Episode"])) +
   facet_grid(~ FrequencyBand) +
   scale_y_continuous(limits = c(0,1))
@@ -142,7 +145,7 @@ blankP <- differenceData %>%
              group = ElectrodeID,
              colour = Difference)) +
   geom_blank() + 
-  scale_color_gradientn(colours = rainbow(4)) +
+  scale_color_gradientn(colours = colFun(5)) +
   theme_stata() +
   theme(plot.background = element_rect(fill = "white"),
         text = element_text(size = 30),
@@ -152,8 +155,8 @@ blankP <- differenceData %>%
         axis.title.y = element_text(vjust = 1.5),
         strip.background = element_rect(colour = "black", size = 0.75),
         panel.border = element_rect(colour = "black", size = 0.75, fill = NA),
-        panel.background = element_rect(fill = "black"),
-        panel.grid.major.y = element_line(colour = "dimgray")) +
+       # panel.background = element_rect(fill = "black"),
+        panel.grid.major.y = element_line(colour = "dimgray", linetype = "longdash")) +
   ylab(expression("Mean P"["Episode"])) +
   facet_grid(~ FrequencyBand) +
   scale_y_continuous(limits = c(0,1))
