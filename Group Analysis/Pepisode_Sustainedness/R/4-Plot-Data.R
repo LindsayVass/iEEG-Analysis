@@ -91,6 +91,7 @@ ggsave(filename = 'Figures/Histogram_Post_Event_Episode_Duration_Tele_lt_Nav.png
 
 validData$TimeType <- factor(validData$TimeType, c('NT', 'FT'))
 facetLabels <- c('\nShort Teleport Time\n', '\nLong Teleport Time\n')
+colFun <- colorRampPalette(c("red", "orange", "black", "deepskyblue", "dodgerblue4"))
 
 for (i in 1:nlevels(validData$FrequencyBand)) {
   p <- validData %>%
