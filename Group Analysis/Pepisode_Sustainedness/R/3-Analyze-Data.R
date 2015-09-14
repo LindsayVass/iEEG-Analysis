@@ -294,7 +294,7 @@ for (thisPerm in 1:nperm) {
     dcast(ElectrodeID + FrequencyBand + RealTrialNumber + TimePoint ~ variable, value.var = "value") %>%
     group_by(ElectrodeID, FrequencyBand, TimePoint) %>%
     do(NavGtTele = wilcox.test(.$MeanNavPepisode, .$MeanTelePepisode, alternative = "greater", paired = TRUE)) %>%
-#    do(NavGtTele = wilcox.test(.$MeanNavPepisode, .$MeanTelePepisode, alternative = "greater")) %>%
+    #    do(NavGtTele = wilcox.test(.$MeanNavPepisode, .$MeanTelePepisode, alternative = "greater")) %>%
     tidy(NavGtTele) %>%
     mutate(Iteration = thisPerm)
 }
@@ -333,7 +333,7 @@ pepisodePermNSigElectrodes <- pepisodePermMaxElectrodes %>%
   ungroup() %>%
   group_by(ElectrodeIteration) %>%
   summarise(MaxCount = max(Count))
-  
+
 pepisodeTrueNSigElectrodesCorrected <- pepisodeTrueNSigElectrodes %>%
   group_by(FrequencyBand, TimePoint, Count) %>%
   do(CorrP = getElectrodeCorrectedP(.$Count, pepisodePermNSigElectrodes$MaxCount))
