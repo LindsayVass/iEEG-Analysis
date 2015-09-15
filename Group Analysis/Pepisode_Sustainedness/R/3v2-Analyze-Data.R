@@ -119,22 +119,26 @@ teleFtPostEntryDur <- meanPostEventOscDuration(teleSustain, 0, "FT") %>%
          Condition = "Teleportation")
 
 meanPostEntryDur <- rbind(navNtPostEntryDur, navFtPostEntryDur, teleNtPostEntryDur, teleFtPostEntryDur) %>%
-  group_by(ElectrodeID, FrequencyBand, TimeType, Condition) %>%
+#  group_by(ElectrodeID, FrequencyBand, TimeType, Condition) %>%
+  group_by(ElectrodeID, FrequencyBand, Condition) %>%
   filter(n() > minTrials) %>%
   summarise(MeanDuration = mean(MeanPostEventDuration),
             SEM = sd(MeanPostEventDuration) / sqrt(n()))
 
 # get permutation-corrected wilcoxon results
 postEntryObs <- rbind(navNtPostEntryDur, navFtPostEntryDur, teleNtPostEntryDur, teleFtPostEntryDur) %>%
-  group_by(ElectrodeID, FrequencyBand, TimeType, Condition) %>%
+#  group_by(ElectrodeID, FrequencyBand, TimeType, Condition) %>%
+  group_by(ElectrodeID, FrequencyBand, Condition) %>%
   select(-RealTrialNumber) %>%
-  dcast(ElectrodeID + FrequencyBand + TimeType ~ Condition, fun.aggregate = length, value.var = "MeanPostEventDuration") %>%
+ # dcast(ElectrodeID + FrequencyBand + TimeType ~ Condition, fun.aggregate = length, value.var = "MeanPostEventDuration") %>%
+  dcast(ElectrodeID + FrequencyBand ~ Condition, fun.aggregate = length, value.var = "MeanPostEventDuration") %>%
   filter(Navigation >= minTrials & Teleportation >= minTrials) %>%
   select(-c(Navigation, Teleportation))
 postEntryTrueData <- rbind(navNtPostEntryDur, navFtPostEntryDur, teleNtPostEntryDur, teleFtPostEntryDur) %>%
   select(-RealTrialNumber) %>%
   inner_join(postEntryObs) %>%
-  group_by(ElectrodeID, FrequencyBand, TimeType) %>%
+ # group_by(ElectrodeID, FrequencyBand, TimeType) %>%
+  group_by(ElectrodeID, FrequencyBand) %>%
   mutate_each(funs(as.factor), TimeType, Condition) %>%
   do(NavGtTele = wilcox_test(MeanPostEventDuration ~ Condition, data = ., distribution = approximate(B = numPerm), alternative = "greater")) %>%
   mutate(Statistic = statistic(NavGtTele),
@@ -142,7 +146,8 @@ postEntryTrueData <- rbind(navNtPostEntryDur, navFtPostEntryDur, teleNtPostEntry
   mutate_each(funs(as.numeric), Statistic, PValue)
 
 postEntryTrueNSigElectrodes <- postEntryTrueData %>%
-  group_by(FrequencyBand, TimeType) %>%
+#  group_by(FrequencyBand, TimeType) %>%
+  group_by(FrequencyBand) %>%
   filter(PValue < 0.05) %>%
   summarise(Count = n())
 
@@ -164,7 +169,8 @@ postEntryPermData <- as.data.frame(rbindlist(postEntryPermData))
 postEntryPermData$PValue <- as.numeric(postEntryPermData$PValue)
 
 postEntryPermNSigElectrodes <- postEntryPermData %>%
-  group_by(FrequencyBand, TimeType, Iteration) %>%
+#  group_by(FrequencyBand, TimeType, Iteration) %>%
+  group_by(FrequencyBand, Iteration) %>%
   filter(PValue < 0.05) %>%
   summarise(Count = n()) %>%
   ungroup() %>%

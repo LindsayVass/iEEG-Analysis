@@ -6,7 +6,7 @@ library(dplyr)
 library(ggplot2)
 library(ggthemes)
 
-load('Rda/allAnalyzedData.Rda')
+load('Rda/allAnalyzedData_COIN.Rda')
 load('Rda/allCleanData.Rda')
 
 # Functions ---------------------------------------------------------------
@@ -47,7 +47,7 @@ allPostEntryData <- rbind(navNtPostEntryDur,
                           navFtPostEntryDur, 
                           teleNtPostEntryDur, 
                           teleFtPostEntryDur) %>%
-  group_by(ElectrodeID, FrequencyBand, TimeType, Condition) %>%
+  group_by(ElectrodeID, FrequencyBand, Condition) %>%
   filter(n() > 5) %>%
   summarise(MeanDuration = mean(MeanPostEventDuration),
             SEM = sd(MeanPostEventDuration) / sqrt(n()))
@@ -56,17 +56,14 @@ navData <- allPostEntryData %>%
 teleData <- allPostEntryData %>%
   filter(Condition == "Teleportation")
 
-validData <- inner_join(navData, teleData, by = c('ElectrodeID', 'FrequencyBand', 'TimeType')) %>%
+validData <- inner_join(navData, teleData, by = c('ElectrodeID', 'FrequencyBand')) %>%
   mutate(Difference = (MeanDuration.y - MeanDuration.x)) %>%
-  select(ElectrodeID, TimeType, Difference, FrequencyBand) %>%
+  select(ElectrodeID, Difference, FrequencyBand) %>%
   inner_join(allPostEntryData)
 
 
 # Make plot of individual electrode effects -------------------------------
 
-validData$TimeType <- factor(validData$TimeType, c('NT', 'FT'))
-facetTimeLabels <- c('Short Time', 'Long Time')
-facetFreqLabels <- c("Delta-Theta", "Alpha", "Beta", "Gamma")
 colFun <- colorRampPalette(c("red", "orange", "black", "deepskyblue", "dodgerblue4"))
 
 p <- validData %>%
@@ -91,6 +88,6 @@ p <- validData %>%
         panel.border = element_rect(colour = "black", size = 0.75, fill = NA),
         panel.grid.major.y = element_line(colour = "dimgray", linetype = "longdash")) +
   ylab("Mean Duration (ms)") +
-  facet_grid(TimeType ~ FrequencyBand, labeller = facetLabeller)
+  facet_grid( ~ FrequencyBand)
 #dir.create('Figures/SingleElectrodeEventDur')
 ggsave('Figures/SingleElectrodeEventDur/PostEntryDuration_Scatter.pdf', useDingbats = FALSE)
