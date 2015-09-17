@@ -50,7 +50,7 @@ rayleighCycles = 2;
 
 % pvalue threshold for determining significance (conservative is good 
 % since we'll be doing many statistical tests)
-rayleighThresh = 0.001;
+rayleighThresh = 0.01;
 
 % either 0 or 1; if 1, this will produce plots for each electrode for NT &
 % FT showing a time-frequency plot of intertrial phase consistency;
@@ -58,7 +58,7 @@ rayleighThresh = 0.001;
 visualize = 0;
 
 % where to save the results
-savePath = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Phase/mat/phaseResults.mat';
+savePath = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Phase/mat/phaseResults_rayleighP01.mat';
 
 %% Run analysis
 
