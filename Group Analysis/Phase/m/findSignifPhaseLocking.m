@@ -7,8 +7,11 @@
 % Lindsay Vass
 % 16 September 2015
 
-phaseResultsPath = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Phase/mat/phaseResults.mat';
-savePath         = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Phase/mat/signifPhaseResults.csv';
+%phaseResultsPath = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Phase/mat/phaseResults.mat';
+phaseResultsPath = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Phase/mat/phaseResults_rayleighP01.mat';
+
+%savePath         = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Phase/csv/signifPhaseResults.csv';
+savePath         = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Phase/csv/signifPhaseResults_rayleighP01.csv';
 
 %load(phaseResultsPath);
 samplingRate   = params.samplingRate;
