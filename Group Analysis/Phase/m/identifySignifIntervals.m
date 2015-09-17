@@ -39,7 +39,7 @@ elseif (isempty(stopInt))
 else
     if (startInt(1) > stopInt(1))
         % We started in an episode
-        startInt = [1 startInt];
+        startInt = [1; startInt];
     end
     if (stopInt(length(stopInt)) < startInt(length(startInt)))
         % We ended on an episode
