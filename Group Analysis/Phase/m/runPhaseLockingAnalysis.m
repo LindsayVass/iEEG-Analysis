@@ -70,10 +70,10 @@ for thisSubject = 1:length(sessionInfo)
         for thisDepth = 1:length(sessionInfo(thisSubject).teleporter(thisTele).depths)
             epochedEEGPath = sessionInfo(thisSubject).teleporter(thisTele).depths(thisDepth).epochedEEGPath;
             goodChans      = sessionInfo(thisSubject).teleporter(thisTele).depths(thisDepth).chanList;
-            analyses = phaseLockingAnalysis(epochedEEGPath, goodChans, frequencies, waveletCycles, rayleighCycles, rayleighThresh, visualize);
+            [analyses, params] = phaseLockingAnalysis(epochedEEGPath, goodChans, frequencies, waveletCycles, rayleighCycles, rayleighThresh, visualize);
             phaseResults(thisSubject).teleporter(thisTele).depths(thisDepth).results = analyses;
         end
     end
 end
 
-save(savePath, 'phaseResults', '-v7.3');
+save(savePath, 'phaseResults', 'params', '-v7.3');

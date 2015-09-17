@@ -1,4 +1,4 @@
-function analyses = phaseLockingAnalysis(epochedEEGPath, goodChans, frequencies, waveletCycles, rayleighCycles, rayleighThresh, visualize)
+function [analyses, params] = phaseLockingAnalysis(epochedEEGPath, goodChans, frequencies, waveletCycles, rayleighCycles, rayleighThresh, visualize)
 % phaseLockingAnalysis: test whether significant phase locking is observed
 % in the 500 ms after teleporter entry or exit
 % >> analyses = phaseLockingAnalysis(epochedEEGPath, goodChans, frequencies, waveletCycles, rayleighCycles, rayleighThresh, visualize)
@@ -67,7 +67,7 @@ analyses(1).Channels     = goodChans;
 
 analyses(2).AnalysisName = 'NT_Exit';
 analyses(2).InputData    = ntPhase;
-analyses(2).TimeInterval = [1830 2330];
+analyses(2).TimeInterval = [1830 2331];
 analyses(2).Channels     = goodChans;
 
 analyses(3).AnalysisName = 'FT_Entry';
@@ -77,16 +77,24 @@ analyses(3).Channels     = goodChans;
 
 analyses(4).AnalysisName = 'FT_Exit';
 analyses(4).InputData    = ftPhase;
-analyses(4).TimeInterval = [2830 3330];
+analyses(4).TimeInterval = [2830 3331];
 analyses(4).Channels     = goodChans;
+
+%% make params structure
+params.frequencies    = frequencies;
+params.waveletCycles  = waveletCycles;
+params.rayleighCycles = rayleighCycles;
+params.rayleighThresh = rayleighThresh;
+params.samplingRate   = EEG.srate;
 
 %% run Rayleigh tests
 
 for thisAnalysis = 1:length(analyses)
-   [phaseDataSample, goodFreq, badFreq] = filterPhaseData(analyses(thisAnalysis).InputData, analyses(thisAnalysis).TimeInterval, EEG.times, frequencies, EEG.srate, rayleighCycles);
+   [phaseDataSample, goodFreq, badFreq, timeMs] = filterPhaseData(analyses(thisAnalysis).InputData, analyses(thisAnalysis).TimeInterval, EEG.times, frequencies, EEG.srate, rayleighCycles);
    analyses(thisAnalysis).GoodFreq = goodFreq;
    analyses(thisAnalysis).BadFreq  = badFreq;
    analyses(thisAnalysis).AnalyzedPhaseData = phaseDataSample;
+   analyses(thisAnalysis).TimeMs = timeMs;
    pData = nan(length(goodChans), size(phaseDataSample, 4), size(phaseDataSample, 2));
    for thisElec = 1:size(phaseDataSample, 1)
        for thisFreq = 1:size(phaseDataSample, 4)

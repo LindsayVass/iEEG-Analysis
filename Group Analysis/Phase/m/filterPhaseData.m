@@ -1,4 +1,4 @@
-function [phaseDataSample, goodFreq, badFreq] = filterPhaseData(phaseData, timeInterval, eegTimes, frequencies, samplingRate, numCycles)
+function [phaseDataSample, goodFreq, badFreq, timeMs] = filterPhaseData(phaseData, timeInterval, eegTimes, frequencies, samplingRate, numCycles)
 % filterPhaseData: Take a dataset of phases and filter data, keeping only
 % values within the specified time interval, and at frequencies that exceed
 % the minimum determined by numCycles (must have at least numCycles within
@@ -22,11 +22,13 @@ function [phaseDataSample, goodFreq, badFreq] = filterPhaseData(phaseData, timeI
 %       of phases
 %   goodFreq: list of the frequencies included in the phaseDataSample
 %   badFreq: list of excluded frequencies
+%   timeMs: vector of timepoints in ms (0 = teleporter entry)
 %
 % Lindsay Vass
 % 15 September 2015
 
 timeInds  = find(eegTimes >= timeInterval(1) & eegTimes <= timeInterval(2));
+timeMs  = eegTimes(timeInds);
 minFreq   = numCycles / (length(timeInds) / samplingRate);
 goodFreq  = frequencies(frequencies >= minFreq);
 badFreq   = frequencies(frequencies < minFreq);
