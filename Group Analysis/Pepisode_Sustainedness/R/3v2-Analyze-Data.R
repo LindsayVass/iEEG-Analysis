@@ -106,17 +106,48 @@ minTrials = 5 # must have this many trials of each condition for analysis
 # get oscillatory event durations post-teleporter-entry
 navNtPostEntryDur <- meanPostEventOscDuration(navSustain, 0, "NT") %>%
   mutate(TimeType = "NT",
-         Condition = "Navigation")
+         Condition = "Navigation",
+         EventType = "Entry")
 navFtPostEntryDur <- meanPostEventOscDuration(navSustain, 0, "FT") %>%
   mutate(TimeType = "FT",
-         Condition = "Navigation")
+         Condition = "Navigation",
+         EventType = "Entry")
+
+navNtPostExitDur <- meanPostEventOscDuration(navSustain, 1830, "NT") %>%
+  mutate(TimeType = "NT",
+         Condition = "Navigation",
+         EventType = "Exit")
+navFtPostExitDur <- meanPostEventOscDuration(navSustain, 2830, "FT") %>%
+  mutate(TimeType = "FT",
+         Condition = "Navigation",
+         EventType = "Exit")
 
 teleNtPostEntryDur <- meanPostEventOscDuration(teleSustain, 0, "NT") %>%
   mutate(TimeType = "NT",
-         Condition = "Teleportation")
+         Condition = "Teleportation",
+         EventType = "Entry")
 teleFtPostEntryDur <- meanPostEventOscDuration(teleSustain, 0, "FT") %>%
   mutate(TimeType = "FT",
-         Condition = "Teleportation")
+         Condition = "Teleportation",
+         EventType = "Entry")
+
+teleNtPostExitDur <- meanPostEventOscDuration(teleSustain, 1830, "NT") %>%
+  mutate(TimeType = "NT",
+         Condition = "Teleportation",
+         EventType = "Exit")
+teleFtPostExitDur <- meanPostEventOscDuration(teleSustain, 2830, "FT") %>%
+  mutate(TimeType = "FT",
+         Condition = "Teleportation",
+         EventType = "Exit")
+
+meanPostEventDur <- rbind(navNtPostEntryDur, navFtPostEntryDur,
+                          navNtPostExitDur, navFtPostExitDur,
+                          teleNtPostEntryDur, teleFtPostEntryDur,
+                          teleNtPostExitDur, teleFtPostExitDur) %>%
+  group_by(ElectrodeID, FrequencyBand, Condition, EventType) %>%
+  filter(n() > minTrials) %>%
+  summarise(MeanDuration = mean(MeanPostEventDuration),
+            SEM = sd(MeanPostEventDuration) / sqrt(n()))
 
 meanPostEntryDur <- rbind(navNtPostEntryDur, navFtPostEntryDur, teleNtPostEntryDur, teleFtPostEntryDur) %>%
 #  group_by(ElectrodeID, FrequencyBand, TimeType, Condition) %>%
@@ -126,6 +157,33 @@ meanPostEntryDur <- rbind(navNtPostEntryDur, navFtPostEntryDur, teleNtPostEntryD
             SEM = sd(MeanPostEventDuration) / sqrt(n()))
 
 # get permutation-corrected wilcoxon results
+postEventObs <- rbind(navNtPostEntryDur, navFtPostEntryDur,
+                      navNtPostExitDur, navFtPostExitDur,
+                      teleNtPostEntryDur, teleFtPostEntryDur,
+                      teleNtPostExitDur, teleFtPostExitDur) %>%
+  group_by(ElectrodeID, FrequencyBand, Condition, EventType) %>%
+  select(-RealTrialNumber) %>%
+  dcast(ElectrodeID + FrequencyBand + EventType ~ Condition, fun.aggregate = length, value.var = "MeanPostEventDuration") %>%
+  filter(Navigation >= minTrials & Teleportation >= minTrials) %>%
+  select(-c(Navigation, Teleportation))
+postEventTrueData <- rbind(navNtPostEntryDur, navFtPostEntryDur,
+                           navNtPostExitDur, navFtPostExitDur,
+                           teleNtPostEntryDur, teleFtPostEntryDur,
+                           teleNtPostExitDur, teleFtPostExitDur) %>%
+  select(-RealTrialNumber) %>%
+  inner_join(postEventObs) %>%
+  group_by(ElectrodeID, FrequencyBand, EventType) %>%
+  mutate_each(funs(as.factor), TimeType, EventType, Condition) %>%
+  do(NavGtTele = wilcox_test(MeanPostEventDuration ~ Condition, data = ., distribution = approximate(B = numPerm), alternative = "greater")) %>%
+  mutate(Statistic = statistic(NavGtTele),
+         PValue = pvalue(NavGtTele)) %>%
+  mutate_each(funs(as.numeric), Statistic, PValue)
+
+postEventTrueNSigElectrodes <- postEventTrueData %>%
+  group_by(FrequencyBand, EventType) %>%
+  filter(PValue < 0.05) %>%
+  summarise(Count = n())
+
 postEntryObs <- rbind(navNtPostEntryDur, navFtPostEntryDur, teleNtPostEntryDur, teleFtPostEntryDur) %>%
 #  group_by(ElectrodeID, FrequencyBand, TimeType, Condition) %>%
   group_by(ElectrodeID, FrequencyBand, Condition) %>%
