@@ -8,7 +8,8 @@ function Teleporter_Epoched_Pepisode_Equal_Time_Bins(...
     cleanedEpochedPrefix,...
     cleanedEpochedSuffix,...
     analysisDir, ...
-    saveFile, ...
+    pepSaveFile, ...
+    powSaveFile, ...
     timePointNames, ...
     timesNT, ...
     timesFT, ...
@@ -52,7 +53,9 @@ function Teleporter_Epoched_Pepisode_Equal_Time_Bins(...
 %
 % Within that directory, the script will save files using the saveFile
 % provided:
-% saveFile = [subjectID '_' teleporter '_epoched_pepisode_equal_time_bins'];
+% pepSaveFile = [subjectID '_' teleporter '_epoched_pepisode_equal_time_bins'];
+% powSaveFile = [subjectID '_' teleporter
+% '_epoched_power_equal_time_bins'];
 % Don't include the filetype. It will save a .mat to analysisDir/mat/ and a
 % .csv to analysisDir/csv/
 %
@@ -85,10 +88,13 @@ if ~exist([analysisDir 'csv/'], 'dir')
     system(['mkdir ' analysisDirNoSpace 'csv/']);
 end
 
-% Initialize the cell array to hold all of our pepisode values
+% Initialize the cell arrays to hold all of our pepisode and power values
 pepisodeSummary      = cell(1,10);
 pepisodeSummary(1,:) = {'SubjectID','Teleporter','Electrode','TrialNumber','TrialSpaceType','TrialTimeType','TrialType','TimePoint','Frequency','Pepisode'};
+powerSummary         = cell(1,10);
+powerSummary(1,:)    = {'SubjectID', 'Teleporter', 'Electrode', 'TrialNumber', 'TrialSpaceType', 'TrialTimeType', 'TrialType', 'TimePoint', 'Frequency', 'Power'};
 thisRow = 2;
+
 
 % Get depth names from chanList
 depthNames = unique(cellfun(@(s) s(1:3), chanList, 'UniformOutput', false));
@@ -142,6 +148,8 @@ for thisDepth = 1:length(depthNames)
                 
                 
                 [~, percentTimePepisode] = calcEpochedPepisodeLKV(powerDistribution, frequencies, eegData, EEG.srate, 95, 3);
+                [frequencies, pow, pha] = multiMorletPowerPhase(eegData, frequencies, EEG.srate, 6);
+                meanPow = mean(pow, 2);
                 
                 % Add to output array
                 if strcmpi('1', EEG.event(thisTrial).type(1)) == 1
@@ -167,6 +175,17 @@ for thisDepth = 1:length(depthNames)
                         frequencies(thisFreq), ...
                         percentTimePepisode(thisFreq)
                         };
+                    powerSummary(thisRow, :) = {subjectID, ...
+                        teleporter, ...
+                        chanNames{thisChan}, ...
+                        thisTrial, ...
+                        spaceType, ...
+                        timeType, ...
+                        [spaceType timeType], ...
+                        timePointNames{thisTimePoint}, ...
+                        frequencies(thisFreq), ...
+                        meanPow(thisFreq)
+                        };
                     thisRow = thisRow + 1;
                     
                 end % thisFreq
@@ -183,5 +202,6 @@ end % thisDepth
 
 % Write out the summary cell array to file
 fprintf('\n\nWriting output to file...\n');
-dlmcell([analysisDir 'csv/' saveFile '.csv'], pepisodeSummary, 'delimiter', ',');
-save([analysisDir 'mat/' saveFile '.mat'], 'pepisodeSummary');
+dlmcell([analysisDir 'csv/' pepSaveFile '.csv'], pepisodeSummary, 'delimiter', ',');
+dlmcell([analysisDir 'csv/' powSaveFile '.csv'], powerSummary, 'delimiter', ',');
+save([analysisDir 'mat/' pepSaveFile '.mat'], 'pepisodeSummary', 'powerSummary');
