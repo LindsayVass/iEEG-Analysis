@@ -13,7 +13,7 @@ phaseResultsPath = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Phase/ma
 %savePath         = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Phase/csv/signifPhaseResults.csv';
 savePath         = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Phase/csv/signifPhaseResults_rayleighP01.csv';
 
-%load(phaseResultsPath);
+load(phaseResultsPath);
 samplingRate   = params.samplingRate;
 rayleighCycles = params.rayleighCycles;
 
