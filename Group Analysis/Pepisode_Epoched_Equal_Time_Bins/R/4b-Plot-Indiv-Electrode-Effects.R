@@ -27,7 +27,7 @@ differenceData <- validData %>%
   group_by(FrequencyBand) %>%
   select(ElectrodeID, FrequencyBand, Difference) %>%
   inner_join(validData)
-differenceData$TimePoint <- revalue(differenceData$TimePoint, c("Pre1" = "Pre", "Tele" = "Teleport", "Post1" = "Post"))
+differenceData$TimePoint <- revalue(differenceData$TimePoint, c("Pre1" = "Pre", "Teleport" = "Tele", "Post1" = "Post"))
 
 colFun <- colorRampPalette(c("red", "orange", "black", "deepskyblue", "dodgerblue4"))
 
@@ -57,6 +57,7 @@ p <- differenceData %>%
   scale_y_continuous(limits = c(0,1))
 p
 ggsave('Figures/SingleElectrodeData/Pepisode_by_TimePoint_Scatterplot.png')
+ggsave('Figures/SingleElectrodeData/Pepisode_by_TimePoint_Scatterplot.pdf', useDingbats = FALSE, width = 16, height = 8)
 
 # blankP <- differenceData %>%
 #   ggplot(aes(x = TimePoint, 
