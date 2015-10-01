@@ -90,4 +90,4 @@ p <- validData %>%
   ylab("Mean Duration (ms)") +
   facet_grid( ~ FrequencyBand)
 #dir.create('Figures/SingleElectrodeEventDur')
-ggsave('Figures/SingleElectrodeEventDur/PostEntryDuration_Scatter.pdf', useDingbats = FALSE)
+ggsave('Figures/SingleElectrodeEventDur/PostEntryDuration_Scatter.pdf', useDingbats = FALSE, width = 16, height = 8)

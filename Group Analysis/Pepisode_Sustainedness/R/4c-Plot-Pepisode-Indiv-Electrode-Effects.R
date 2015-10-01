@@ -22,7 +22,8 @@ diffPepisode <- allPepisode %>%
   summarise(MeanNavMinusTele = mean(NavMinusTele),
             SEMNavMinusTele = sd(NavMinusTele) / sqrt(n()))
 
-colFun <- colorRampPalette(c("red", "orange", "black", "deepskyblue", "dodgerblue4"))
+#colFun <- colorRampPalette(c("red", "orange", "black", "deepskyblue", "dodgerblue4"))
+colFun <- colorRampPalette(c("dodgerblue4", "deepskyblue", "black", "orange", "red"))
 
 diffPepisode$TimePoint <- mapvalues(diffPepisode$TimePoint, from = c("Pre1", "Tele", "Post1"), to = c("Pre", "Tele", "Post"))
 diffPepisode$TimePoint <- factor(diffPepisode$TimePoint, levels = c("Pre", "Tele", "Post"))
@@ -50,4 +51,4 @@ scatterPepisode <- diffPepisode %>%
   ylab(expression("Difference in Mean P"["Episode"])) +
   facet_grid(~ FrequencyBand) 
 scatterPepisode
-ggsave('Figures/SingleElectrodePepisode/Scatter_Nav_versus_Tele.pdf', useDingbats = FALSE)
+ggsave('Figures/SingleElectrodePepisode/Scatter_Nav_versus_Tele.pdf', useDingbats = FALSE, width = 16, height = 8)
