@@ -26,8 +26,10 @@ filterSample <- function(thisData, condition, trainSize, testSize) {
     select(TrialID) %>%
     unique()
   trainList <- trialList %>%
+    ungroup() %>%
     sample_n(trainSize)
   testList <- suppressMessages(anti_join(trialList, trainList)) %>%
+    ungroup() %>%
     sample_n(testSize)
   return(list(train = trainList, test = testList))
   
@@ -175,6 +177,7 @@ for (thisResult in 1:nlevels(classData$ElectrodeID)) {
     group_by(TrialNumber, Condition, Classification) %>%
     summarise(Count = n()) %>%
     as.data.frame() %>%
+    mutate(TrialNumber = paste(TrialNumber, Condition, sep = "_")) %>%
     arrange(TrialNumber) %>%
     ungroup() %>%
     group_by(TrialNumber) %>%
@@ -184,19 +187,19 @@ for (thisResult in 1:nlevels(classData$ElectrodeID)) {
   meanTrialResults$Condition <- factor(meanTrialResults$Condition, levels = c('Navigation', 'Teleportation'))
   
   trialAccuracy <- meanTrialResults %>%
-    select(TrialNumber, TrialSpaceType, PropNS) %>%
+    select(TrialNumber, Condition, PropNav) %>%
     unique() %>%
-    mutate(FinalClass = ifelse(PropNS > 0, "Short", "Long"),
-           Accurate = ifelse(TrialSpaceType == FinalClass, TRUE, FALSE)) %>%
+    mutate(FinalClass = ifelse(PropNav > 0, "Navigation", "Teleportation"),
+           Accurate = ifelse(Condition == FinalClass, TRUE, FALSE)) %>%
     group_by(Accurate) %>%
     summarise(Count = n())
   accuracyLabel <- paste0(trialAccuracy$Count[which(trialAccuracy$Accurate == TRUE)], '/', sum(trialAccuracy$Count), ' trials correctly classified')
   
   trialClassP <- meanTrialResults %>%
-    transform(TrialNumber = reorder(TrialNumber, PropNS)) %>%
+    transform(TrialNumber = reorder(TrialNumber, PropNav)) %>%
     ggplot(aes(x = factor(TrialNumber),
-               y = PropNS,
-               fill = TrialSpaceType)) +
+               y = PropNav,
+               fill = Condition)) +
     geom_bar(stat = 'identity', position = 'identity') +
     scale_y_continuous(limits = c(-0.5, 0.5),
                        breaks = c(-0.5, -0.25, 0, 0.25, 0.5),
@@ -211,9 +214,9 @@ for (thisResult in 1:nlevels(classData$ElectrodeID)) {
           axis.ticks = element_line(colour = "black"),
           panel.border = element_rect(colour = "black", fill = NA),
           axis.title.x = element_text(vjust = -0.5)) +
-    labs(y = '% Iterations Classified as "Short"',
+    labs(y = '% Iterations Classified as "Navigation"',
          x = 'Trial',
-         fill = 'Distance Teleported') 
+         fill = 'Condition') 
   trialClassP
   ggsave(paste0('Figures/Single Electrode/Bar_Trial_Classification_', as.character(levels(classData$ElectrodeID)[thisResult]), '_', as.character(topClass$Model[which(topClass$ElectrodeID == levels(classData$ElectrodeID)[thisResult])]), '.pdf'))
 
