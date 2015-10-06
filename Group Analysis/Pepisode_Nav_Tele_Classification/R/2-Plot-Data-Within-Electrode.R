@@ -16,7 +16,7 @@ library(R.matlab)
 load('Rda/allClassificationResults.Rda')
 load('../Pepisode_Sustainedness/Rda/allCleanData.Rda')
 
-dir.create('Figures/Single Electrode/')
+#dir.create('Figures/Single Electrode/')
 
 # Functions ---------------------------------------------------------------
 filterSample <- function(thisData, condition, trainSize, testSize) {
@@ -84,12 +84,12 @@ sampleData <- function(thisData, trainingSize, testingSize) {
 # Prepare data for plotting -----------------------------------------------
 
 # select the top classification results
-numResults <- 10
+# numResults <- 10
 
 topClass <- allMeanClassificationResults %>%
   ungroup() %>%
-  arrange(desc(Accuracy))
-topClass <- topClass[1:numResults,] %>%
+#   arrange(desc(Accuracy))
+# topClass <- topClass[1:numResults,] %>%
   select(ElectrodeID, Model) %>%
   rename(TrialTimeType = Model)
 
