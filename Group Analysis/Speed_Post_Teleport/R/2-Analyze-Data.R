@@ -19,6 +19,12 @@ summarySpeedData <- speedData %>%
   summarise(MeanSpeed = mean(Speed),
             SEMSpeed = sd(Speed) / sqrt(n()))
 
+groupSummarySpeedData <- speedData %>%
+  ungroup() %>%
+  group_by(Interval) %>%
+  summarise(MeanSpeed = mean(Speed),
+            SEMSpeed = sd(Speed) / sqrt(n()))
+
 summaryStats <- speedData %>%
   dcast(ElectrodeID + TrialNumber ~ Interval, value.var = "Speed") %>%
   group_by(ElectrodeID) %>%
