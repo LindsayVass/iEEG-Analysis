@@ -104,15 +104,16 @@ for (thisElec in 1:nlevels(bestData$ElectrodeID)) {
           axis.ticks = element_line(colour = "black"),
           panel.border = element_rect(colour = "black", fill = NA),
           panel.margin = unit(1, "lines")) +
-     scale_shape_identity() 
-#      geom_point(data = scaledBinary,
-#                 colour = NA,
-#                 aes(x = Time,
-#                     y = y,
-#                     shape = 22,
-#                     fill = Frequency)) +
+     scale_shape_identity() +
+     geom_point(data = scaledBinary,
+                colour = NA,
+                aes(x = Time,
+                    y = y,
+                    shape = 22,
+                    fill = Frequency)) +
 #     geom_text(data = pepisodeVals, aes(x = x, y = y, label = Label, hjust = 0), size = 2) +
-#     expand_limits(x = c(0, 1.07 * max(allEEG$Time)))
+    expand_limits(x = c(0, 1.07 * max(allEEG$Time))) +
+    guides(fill = guide_colorbar(title = "Frequency (Hz)"))
    
 
     
