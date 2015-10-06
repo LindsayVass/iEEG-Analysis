@@ -117,7 +117,7 @@ runPermAnalysis <- function(theData, anovaOutput, control, iData, numPerm = 1000
 # Get mean across values within frequency band ----------------------------
 
 cleanData <- cleanData %>%
-  filter(FrequencyBand == "Delta" | FrequencyBand == "Theta") %>%
+  filter(FrequencyBand == "Delta-Theta") %>%
   group_by(ElectrodeID, TrialSpaceType, TrialTimeType, TimeBin) %>%
   summarise(Pepisode = mean(Pepisode))
 
