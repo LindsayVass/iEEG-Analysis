@@ -19,6 +19,7 @@ library(gridExtra)
 library(gtable)
 library(cowplot)
 
+source('../../functions/ggplot2_formatter.R')
 
 # Functions ---------------------------------------------------------------
 
@@ -53,6 +54,19 @@ moveStripToTop <- function(plot) {
   }
   
   return(gt)
+}
+
+fancy_scientific <- function(l) {
+  # turn in to character string in scientific notation
+  l <- format(l, scientific = TRUE)
+  # quote the part before the exponent to keep all the digits
+#   l <- gsub("^(.*)e", "'\\1'e", l)
+l <- gsub("^(.*)e", "e", l)
+  # turn the 'e+' into plotmath format
+#   l <- gsub("e", "%*%10^", l)
+l <- gsub("e", "10^", l)
+  # return this as an expression
+  parse(text=l)
 }
 
 # Import and prepare data -------------------------------------------------
@@ -128,10 +142,9 @@ allData$ObservationID <- factor(allData$ObservationID)
 allData$TimePoint <- mapvalues(allData$TimePoint, from = c("Pre1", "Tele", "Post1"), to = c("Pre", "Tele", "Post"))
 allData$Condition <- mapvalues(allData$Condition, from = c("Navigation", "Teleporter"), to = c("Navigation", "Teleportation"))
 
-
-
 # Make plots --------------------------------------------------------------
-maxFreq <- 40
+maxFreq <- 181 # for PSDs
+fontSize <- 30
 
 for (i in 1:nlevels(allData$ObservationID)) {
   thisData <- allData %>%
@@ -166,43 +179,46 @@ for (i in 1:nlevels(allData$ObservationID)) {
     facet_grid(Condition ~ ., space = "free") + 
     geom_vline(xintercept = x, colour = "blue", size = 2, linetype = "longdash") +
     theme_few() +
-    theme(text = element_text(size = 24),
+    theme(text = element_text(size = fontSize),
           panel.margin = unit(0.5, "lines"),
           strip.text.y = element_text(angle = 0),
-          strip.background = element_rect(fill = "grey", colour = "black"),
           line = element_line(colour = "black"),
           panel.border = element_rect(colour = "black", fill = NA),
           axis.title.x = element_text(face = "plain"),
-          axis.title.y = element_text(vjust = 1)) +
+          axis.title.y = element_text(vjust = 1),
+          strip.background = element_rect(colour = "black", fill = "deepskyblue"),
+          plot.margin = unit(c(0.3, 1, 0.3, 0.3), "cm")) +
     labs(x = "Time (ms)",
          y = expression(paste('Voltage (', mu, 'V)'))) +
     guides(colour = FALSE)
   pLine
   
   gLine <- moveStripToTop(pLine)
-  
-  # Draw it
   grid.newpage()
   grid.draw(gLine)
-  
   
   # plot bar graph showing mean pepisode at each timepoint
   
   pBar <- thisPepisodeData %>%
-    ggplot(aes(x = TimePoint, y = MeanPepisode)) +
+    ggplot(aes(x = TimePoint, y = MeanPepisode, fill = TimePoint)) +
     geom_bar(stat = "identity") +
     facet_grid(Condition ~ .) +
     labs(y = expression(paste("Mean Delta-Theta ", P[Episode])),
-         x = "Time Point") +
+         x = "  ") +
     theme_few() +
-    theme(text = element_text(size = 24),
+    theme(text = element_text(size = fontSize),
           panel.margin = unit(0.5, "lines"),
           strip.text.y = element_text(angle = 0),
-          strip.background = element_rect(fill = "grey", colour = "black"),
+          strip.background = element_rect(fill = "deepskyblue", colour = "black"),
           line = element_line(colour = "black"),
           panel.border = element_rect(colour = "black", fill = NA),
+        #  axis.title.x = element_blank(),
           axis.title.x = element_text(face = "plain"),
-          axis.title.y = element_text(vjust = 1)) 
+          axis.text.x = element_text(colour = "white"),
+          axis.ticks.x = element_line(colour = "white"),
+          axis.title.y = element_text(vjust = 1),
+        plot.margin = unit(c(0.3, 0.3, 0.3, 0.3), "cm")) +
+    guides(fill = FALSE)
    # scale_y_continuous(limits = c(0,1))
   
   gBar <- moveStripToTop(pBar)
@@ -217,21 +233,25 @@ for (i in 1:nlevels(allData$ObservationID)) {
   
   pPSD <- thisPowerData %>%
     ggplot(aes(x = Frequency, y = MeanPower)) +
-    geom_line(aes(color = TimePoint), size = 1) +
+    geom_line(aes(colour = TimePoint), size = 1) +
     facet_grid(Condition ~ .) +
     scale_x_log10(breaks = freqList, labels = signif(freqList, 2)) +
-    scale_y_log10() +
+    scale_y_log10(labels = fancy_scientific) +
     labs(x = "Frequency (Hz)",
          y = expression(paste('Power (', mu, 'V'^'2',' / Hz)'))) +
     theme_few() +
-    theme(text = element_text(size = 24),
+    theme(text = element_text(size = fontSize),
           panel.margin = unit(0.5, "lines"),
           strip.text.y = element_text(angle = 0),
-          strip.background = element_rect(fill = "grey", colour = "black"),
+          strip.background = element_rect(fill = "deepskyblue", colour = "black"),
           line = element_line(colour = "black"),
           panel.border = element_rect(colour = "black", fill = NA),
           axis.title.x = element_text(face = "plain"),
-          axis.title.y = element_text(vjust = 1))
+          axis.title.y = element_text(vjust = 1),
+          legend.position = c(0.8, 0.85),
+          legend.title = element_blank(),
+          legend.background = element_rect(fill = NA, colour = NA),
+          plot.margin = unit(c(0.3, 0.3, 0.3, 0.3), "cm"))
     
   gPSD <- moveStripToTop(pPSD)
   grid.newpage()
@@ -242,9 +262,9 @@ for (i in 1:nlevels(allData$ObservationID)) {
   freq <- unique(thisData$Frequency)
   trial <- unique(thisData$RealTrialNumber)
   fileName <- paste0('Figures/RawTracePlusPepisodeAndPSD/', electrodeID, '_', freq, 'Hz_Trial', trial, '.pdf')
-  pdf(file = fileName, width = 28, height = 6)
+  pdf(file = fileName, width = 16, height = 6)
   #grid.arrange(gt, pBar, ncol = 2, widths = c(6, 1.5))
-  grid.arrange(gLine, gBar, gPSD, ncol = 3, widths = c(50, 20, 30))
+  grid.arrange(gLine, gBar, gPSD, ncol = 3, widths = c(48, 22, 30), padding = 10)
   dev.off()
 }
 
