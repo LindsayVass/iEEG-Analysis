@@ -248,7 +248,7 @@ for (thisElec in 1:nlevels(bestData$ElectrodeID)) {
                    y = y,
                    shape = 22,
                    fill = Frequency)) +
-    expand_limits(x = c(0, 1.07 * max(allEEG$Time))) +
+    expand_limits(x = c(0, 1.2 * max(allEEG$Time))) +
     scale_fill_continuous(limits = c(signif(minFreq, 2), signif(maxFreq,2)), breaks =  c(signif(minFreq, 2), signif(maxFreq,2))) +
     guides(fill = guide_colorbar(label.vjust = -0.05)) + 
     theme(text = element_text(size = 18),
@@ -258,9 +258,9 @@ for (thisElec in 1:nlevels(bestData$ElectrodeID)) {
           panel.margin = unit(1, "lines"),
           strip.background = element_rect(colour = "black", fill = stripColors[1]),
           strip.text = element_text(colour = "white"),
-          legend.position = c(0.95, 0.1),
+          legend.position = c(0.9, 0.08),
           legend.title = element_blank(),
-          legend.key.height = unit(0.22, 'cm'),
+          legend.key.height = unit(0.2, 'cm'),
           legend.background = element_blank())
   rawTrace
   
@@ -323,11 +323,15 @@ for (thisElec in 1:nlevels(bestData$ElectrodeID)) {
   
   ######## Plot all subplots together #########
   fileName <- paste0('Figures/Single Electrode/MultiPlot/', electrode, '.pdf')
-  pdf(file = fileName, width = 10, height = 8, useDingbats = FALSE)
-  grid.newpage()
-  pushViewport(viewport(layout = grid.layout(2, 2)))
-  print(rawTrace, vp = viewport(layout.pos.row = 1, layout.pos.col = 1:2))
-  print(scatterP, vp = viewport(layout.pos.row = 2, layout.pos.col = 1))
-  print(trialClassP, vp = viewport(layout.pos.row = 2, layout.pos.col = 2))
+  
+  pdf(file = fileName, width = 16, height = 4, useDingbats = FALSE)
+  grid.arrange(rawTrace, scatterP, trialClassP, ncol = 3)
   dev.off()
+#   pdf(file = fileName, width = 10, height = 8, useDingbats = FALSE)
+#   grid.newpage()
+#   pushViewport(viewport(layout = grid.layout(2, 2)))
+#   print(rawTrace, vp = viewport(layout.pos.row = 1, layout.pos.col = 1:2))
+#   print(scatterP, vp = viewport(layout.pos.row = 2, layout.pos.col = 1))
+#   print(trialClassP, vp = viewport(layout.pos.row = 2, layout.pos.col = 2))
+#   dev.off()
 }
