@@ -323,7 +323,7 @@ for (thisElec in 1:nlevels(bestData$ElectrodeID)) {
   
   ######## Plot all subplots together #########
   fileName <- paste0('Figures/Single Electrode/MultiPlot/', electrode, '.pdf')
-  pdf(file = fileName, width = 10, height = 8)
+  pdf(file = fileName, width = 10, height = 8, useDingbats = FALSE)
   grid.newpage()
   pushViewport(viewport(layout = grid.layout(2, 2)))
   print(rawTrace, vp = viewport(layout.pos.row = 1, layout.pos.col = 1:2))
