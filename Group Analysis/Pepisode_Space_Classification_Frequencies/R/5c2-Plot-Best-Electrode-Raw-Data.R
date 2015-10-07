@@ -14,13 +14,13 @@ library(R.matlab)
 library(RColorBrewer)
 library(reshape2)
 library(grid)
-
+library(kernlab)
+library(gridExtra)
 
 # Functions ---------------------------------------------------------------
 plotLabeller <- function(variable, value) {
   variable <- spaceNames[value]
 }
-
 
 filterSample <- function(thisData, spaceType, trainSize, testSize) {
   trialList <- thisData %>%
@@ -85,6 +85,53 @@ sampleData <- function(thisData, trainingSize, testingSize) {
 gg_color_hue <- function(n) {
   hues = seq(15, 375, length=n+1)
   hcl(h=hues, l=65, c=100)[1:n]
+}
+
+runClassification <- function(classData, thisResult, numPerm = 1000, trainingPercent = 0.75) {
+  # set classification parameters
+  numObservations <- classData %>%
+    filter(ElectrodeID == levels(ElectrodeID)[thisResult]) %>%
+    group_by(ElectrodeID, TrialSpaceType) %>%
+    summarise(Count = n() / length(unique(Frequency)))
+  trainingSize     <- floor(trainingPercent * min(numObservations$Count))
+  testingSize      <- min(numObservations$Count) - trainingSize
+  
+  oneElecResults <- vector(mode = "list", length = numPerm)
+  thisData <- classData %>%
+    filter(ElectrodeID == levels(ElectrodeID)[thisResult])
+  for (i in 1:numPerm) {
+    thisSample <- sampleData(thisData, trainingSize, testingSize)
+    fit <- ksvm(TrialSpaceType ~ ., data = thisSample$train)
+    predictions <- predict(fit, thisSample$test, type = "response") %>%
+      cbind(thisSample$testTrials)
+    names(predictions) <- c('Classification', 'ElectrodeID', 'TrialNumber', 'TrialSpaceType')
+    oneElecResults[[i]] <- predictions
+  }
+  oneElecResults <- data.table::rbindlist(oneElecResults)
+  
+  meanTrialResults <- oneElecResults %>% 
+    select(-ElectrodeID) %>%
+    group_by(TrialNumber, TrialSpaceType, Classification) %>%
+    summarise(Count = n()) %>%
+    as.data.frame() %>%
+    arrange(TrialNumber) %>%
+    ungroup() %>%
+    group_by(TrialNumber) %>%
+    mutate(TotalCount = sum(Count)) %>%
+    filter(Classification == "NS") %>%
+    mutate(PropNS = Count / TotalCount - 0.5)
+  meanTrialResults$TrialSpaceType <- factor(meanTrialResults$TrialSpaceType, levels = c('NS', 'FS'), labels = c('Short', 'Long'))
+  
+  trialAccuracy <- meanTrialResults %>%
+    select(TrialNumber, TrialSpaceType, PropNS) %>%
+    unique() %>%
+    mutate(FinalClass = ifelse(PropNS > 0, "Short", "Long"),
+           Accurate = ifelse(TrialSpaceType == FinalClass, TRUE, FALSE)) %>%
+    group_by(Accurate) %>%
+    summarise(Count = n())
+  accuracyLabel <- paste0(trialAccuracy$Count[which(trialAccuracy$Accurate == TRUE)], '/', sum(trialAccuracy$Count), ' trials')
+  
+  return(list(meanTrialResults = meanTrialResults, accuracyLabel = accuracyLabel))
 }
 
 # Prep Raw Data ----------------------------------------------------------------
@@ -211,12 +258,76 @@ for (thisElec in 1:nlevels(bestData$ElectrodeID)) {
           panel.margin = unit(1, "lines"),
           strip.background = element_rect(colour = "black", fill = stripColors[1]),
           strip.text = element_text(colour = "white"),
-          legend.position = c(0.95, 0.09),
+          legend.position = c(0.95, 0.1),
           legend.title = element_blank(),
-          legend.key.height = unit(0.35, 'cm'),
+          legend.key.height = unit(0.22, 'cm'),
           legend.background = element_blank())
   rawTrace
   
+  ######## Make scatterplot of mean pepisode at each frequency #############
+  meanFreqPepisode <- classData %>%
+    filter(ElectrodeID == as.character(topClass$ElectrodeID[thisElec])) %>%
+    group_by(TrialSpaceType, Frequency) %>%
+    summarise(MeanPepisode = mean(Pepisode),
+              SEM = sd(Pepisode) / sqrt(n()))
+  scatterP <- meanFreqPepisode %>%
+    ggplot(aes(x = Frequency,
+               y = MeanPepisode,
+               ymin = MeanPepisode - SEM,
+               ymax = MeanPepisode + SEM,
+               color = factor(TrialSpaceType, labels = c('Short', 'Long')))) +
+    geom_point(size = 5) +
+    geom_pointrange() +
+    scale_colour_manual(values = stripColors) +
+    scale_x_log10(breaks = unique(meanFreqPepisode$Frequency), labels = round(unique(meanFreqPepisode$Frequency), digits = 2)) + 
+    theme_few() +
+    theme(text = element_text(size = 18),
+          axis.title.y = element_text(vjust = 1),
+          axis.title.x = element_text(vjust = -0.25),
+          axis.ticks = element_line(colour = "black"),
+          panel.border = element_rect(colour = "black", fill = NA),
+          legend.position = c(0.27, 0.85)) +
+    labs(x = 'Frequency (Hz)',
+         y = expression('Mean P'['Episode']),
+         colour = 'Distance Teleported')
+  scatterP
   
-  #ggsave(paste0('Figures/Single Electrode/RawTrace_', electrode, '.pdf'), width = 10.7)
+  ######### Make bar plot of trialwise classification #############
+  
+  classResults <- runClassification(classData, thisElec)
+  
+  trialClassP <- classResults$meanTrialResults %>%
+    transform(TrialNumber = reorder(TrialNumber, PropNS)) %>%
+    ggplot(aes(x = factor(TrialNumber),
+               y = PropNS,
+               fill = TrialSpaceType)) +
+    scale_fill_manual(values = stripColors) +
+    geom_bar(stat = 'identity', position = 'identity') +
+    scale_y_continuous(limits = c(-0.5, 0.5),
+                       breaks = c(-0.5, -0.25, 0, 0.25, 0.5),
+                       labels = c(0, 25, 50, 75, 100)) +
+    annotation_custom(grob = textGrob(classResults$accuracyLabel, gp = gpar(fontsize = 18)), xmin = -15, xmax = Inf, ymin = 0, ymax = Inf) +
+    coord_flip() +
+    theme_few() +
+    theme(text = element_text(size = 18),
+          axis.text.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          legend.position = c(0.25, 0.85),
+          axis.ticks = element_line(colour = "black"),
+          panel.border = element_rect(colour = "black", fill = NA),
+          axis.title.x = element_text(vjust = -0.5)) +
+    labs(y = '% Iterations Classified as "Short"',
+         x = 'Trial',
+         fill = 'Distance Teleported') 
+  trialClassP
+  
+  ######## Plot all subplots together #########
+  fileName <- paste0('Figures/Single Electrode/MultiPlot/', electrode, '.pdf')
+  pdf(file = fileName, width = 10, height = 8)
+  grid.newpage()
+  pushViewport(viewport(layout = grid.layout(2, 2)))
+  print(rawTrace, vp = viewport(layout.pos.row = 1, layout.pos.col = 1:2))
+  print(scatterP, vp = viewport(layout.pos.row = 2, layout.pos.col = 1))
+  print(trialClassP, vp = viewport(layout.pos.row = 2, layout.pos.col = 2))
+  dev.off()
 }
