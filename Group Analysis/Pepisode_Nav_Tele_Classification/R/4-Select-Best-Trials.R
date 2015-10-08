@@ -31,12 +31,15 @@ bestData <- bestData %>%
          FrequencyBand == "Delta-Theta", 
          MeanTele != 0,
          MeanNav != 0) %>%
+  mutate(MeanPepisode = (MeanTele + MeanNav)/2) %>%
   ungroup() %>%
   group_by(ElectrodeID) %>%
-  sample_n(numTrials) %>% 
-  select(-c(MeanTele, MeanNav)) %>%
+  arrange(desc(MeanPepisode)) %>%
+  top_n(numTrials) %>%
+  select(-c(MeanTele, MeanNav, MeanPepisode)) %>%
   inner_join(allPepisode) %>%
-  select(ElectrodeID, RealTrialNumber, TrialSpaceType, TrialTimeType, Frequency, TelePepisode, NavPepisode)
+  select(ElectrodeID, RealTrialNumber, TrialSpaceType, TrialTimeType, Frequency, TelePepisode, NavPepisode) %>%
+  filter(Frequency > 7)
 
 # Convert from RealTrialNumber, to TrialNumber, which only indexes valid trials
 bestTele <- bestData %>%
