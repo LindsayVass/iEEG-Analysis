@@ -1,27 +1,24 @@
 # Script Name:  4-Select-Best-Trials.R
 # Author:       Lindsay Vass
 # Date:         8 October 2015
-# Purpose:      Find the top 3 electrodes based on classification, and select 5 
-#               trials each. This will be output as a .mat file so the raw data
-#               can be extracted in Matlab.
+# Purpose:      Select 5 trials from favorite 2 electrodes. This will be output 
+#               as a .mat file so the raw data can be extracted in Matlab.
 
 library(R.matlab)
 library(dplyr)
 
-
-# number of top electrodes
-numElec <- 3
+load('Rda/allClassificationResults.Rda')
+load('../Pepisode_Sustainedness/Rda/allCleanData.Rda')
 
 # number of trials
 numTrials <- 5
 
+topElectrodes <- data.frame(ElectrodeID = c("UCDMC13_TeleporterA_LAD1", "UCDMC14_TeleporterB_RHD2"))
+
 # select top electrodes for the "both" model
 topClass <- allMeanClassificationResults %>%
   filter(Model == "Both") %>%
-  ungroup() %>%
-  arrange(desc(Accuracy))
-topClass <- topClass[1:numElec,] %>%
-  select(ElectrodeID)
+  inner_join(topElectrodes)
 
 # select 5 trials with nonzero pepisode from the top electrodes
 bestData <- allPepisode %>%
