@@ -62,4 +62,4 @@ bestNav <- bestData %>%
 
 #dir.create('mat')
 writeMat('mat/bestPepisodeTrials.mat', bestTele = bestTele, bestNav = bestNav)
-save(file = 'Rda/bestPepisodeTrials.Rda', list = c('bestTele', 'bestNav'))
+save(file = 'Rda/bestPepisodeTrials.Rda', list = c('bestTele', 'bestNav', 'topClass'))
