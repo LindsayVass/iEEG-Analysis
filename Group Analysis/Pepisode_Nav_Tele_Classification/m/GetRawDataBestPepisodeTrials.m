@@ -35,23 +35,81 @@ subjectDir = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/';
 %% analysis
 
 % split electrodeID into subject, teleporter, electrode
-subjectData = cell(length(bestData.ElectrodeID), 3);
-electrodeID = bestData.ElectrodeID;
+subjectData = cell(length(bestTele.ElectrodeID), 3);
+electrodeID = bestTele.ElectrodeID;
 for thisRow = 1:length(electrodeID)
     subjectData(thisRow, :) = strsplit(electrodeID{thisRow}, '_');
 end
 
-allEEGData    = cell(length(bestData.ElectrodeID), 1);
-allBinaryData = cell(length(bestData.ElectrodeID), 1);
+allTeleEEGData    = cell(length(bestTele.ElectrodeID), 1);
+allTeleBinaryData = cell(length(bestTele.ElectrodeID), 1);
 
-for thisTrial = 1:length(bestData.TrialNumber)
+allNavEEGData    = cell(length(bestNav.ElectrodeID), 1);
+allNavBinaryData = cell(length(bestNav.ElectrodeID), 1);
+
+eegNtTimes = [];
+eegFtTimes = [];
+
+for thisTrial = 1:length(bestTele.TrialNumber)
     
     % load EEG data
     eegPath = [subjectDir subjectData{thisTrial, 1} '/Epoched Data/' subjectData{thisTrial, 1} '_' subjectData{thisTrial, 2} '_epoched_' subjectData{thisTrial, 3}(1:3) '_noSpikes_noWaves.set'];
     EEG = pop_loadset(eegPath);
     
     % find indices corresponding to our time interval
-    if strcmpi('NT', bestData.TrialTimeType(thisTrial)) == 1
+    if strcmpi('NT', bestTele.TrialTimeType(thisTrial)) == 1
+        calcInds = find(EEG.times >= timesNTCalc(1) & EEG.times <= timesNTCalc(2));
+        teleInds = find(EEG.times >= timesNT(1) & EEG.times <= timesNT(2));
+        
+        if isempty(eegNtTimes)
+            eegNtTimes = EEG.times(teleInds);
+        end
+    else
+        calcInds = find(EEG.times >= timesFTCalc(1) & EEG.times <= timesFTCalc(2));
+        teleInds = find(EEG.times >= timesFT(1) & EEG.times <= timesFT(2));
+        
+        if isempty(eegFtTimes)
+            eegFtTimes = EEG.times(teleInds);
+        end
+    end
+    
+    % Find the index of this channel in the EEG.data
+    chanLabels = {EEG.chanlocs.labels};
+    chanInd = find(strcmpi(subjectData{thisTrial, 3}, chanLabels));
+    
+    % select the eeg data for analysis
+    eegData = EEG.data(chanInd, :, bestTele.TrialNumber(thisTrial));
+    allTeleEEGData{thisTrial} = eegData(teleInds);
+    
+    % load the power distribution file
+    powerDistSaveFile = [subjectDir subjectData{thisTrial, 1} '/Mat Files/Pepisode/Power Distributions/' subjectData{thisTrial, 1} '_' subjectData{thisTrial, 2} '_' subjectData{thisTrial, 3} '_power_distribution.mat'];
+    load(powerDistSaveFile);
+    
+    % restrict to this frequency
+    thisFrequency = bestTele.Frequency(thisTrial);
+    frequencyList = cell2mat({powerDistribution.frequency});
+    %freqInd       = find(frequencyList == thisFrequency);
+    freqInd       = find(frequencies == thisFrequency);
+    
+    [binaryMatrix, percentTimePepisode] = calcEpochedPepisodeLKV(powerDistribution, frequencies, eegData, EEG.srate, 95, 3);
+    
+    %allBinaryData{thisTrial} = binaryMatrix(freqInd, teleInds);
+    allTeleBinaryData{thisTrial} = binaryMatrix(:, teleInds);
+    
+    if (abs(bestTele.Pepisode(thisTrial)) - mean(binaryMatrix(freqInd, teleInds))) > tol
+        error('Pepisode does not match expected value.')
+    end
+    
+end
+
+for thisTrial = 1:length(bestNav.TrialNumber)
+    
+    % load EEG data
+    eegPath = [subjectDir subjectData{thisTrial, 1} '/Epoched Data/' subjectData{thisTrial, 1} '_' subjectData{thisTrial, 2} '_epoched_' subjectData{thisTrial, 3}(1:3) '_navigation.set'];
+    EEG = pop_loadset(eegPath);
+    
+    % find indices corresponding to our time interval
+    if strcmpi('NT', bestNav.TrialTimeType(thisTrial)) == 1
         calcInds = find(EEG.times >= timesNTCalc(1) & EEG.times <= timesNTCalc(2));
         teleInds = find(EEG.times >= timesNT(1) & EEG.times <= timesNT(2));
     else
@@ -64,15 +122,15 @@ for thisTrial = 1:length(bestData.TrialNumber)
     chanInd = find(strcmpi(subjectData{thisTrial, 3}, chanLabels));
     
     % select the eeg data for analysis
-    eegData = EEG.data(chanInd, :, bestData.TrialNumber(thisTrial));
-    allEEGData{thisTrial} = eegData(teleInds);
+    eegData = EEG.data(chanInd, :, bestNav.TrialNumber(thisTrial));
+    allNavEEGData{thisTrial} = eegData(teleInds);
     
     % load the power distribution file
     powerDistSaveFile = [subjectDir subjectData{thisTrial, 1} '/Mat Files/Pepisode/Power Distributions/' subjectData{thisTrial, 1} '_' subjectData{thisTrial, 2} '_' subjectData{thisTrial, 3} '_power_distribution.mat'];
     load(powerDistSaveFile);
     
     % restrict to this frequency
-    thisFrequency = bestData.Frequency(thisTrial);
+    thisFrequency = bestNav.Frequency(thisTrial);
     frequencyList = cell2mat({powerDistribution.frequency});
     %freqInd       = find(frequencyList == thisFrequency);
     freqInd       = find(frequencies == thisFrequency);
@@ -80,14 +138,12 @@ for thisTrial = 1:length(bestData.TrialNumber)
     [binaryMatrix, percentTimePepisode] = calcEpochedPepisodeLKV(powerDistribution, frequencies, eegData, EEG.srate, 95, 3);
     
     %allBinaryData{thisTrial} = binaryMatrix(freqInd, teleInds);
-    allBinaryData{thisTrial} = binaryMatrix(:, teleInds);
+    allNavBinaryData{thisTrial} = binaryMatrix(:, teleInds);
     
-    if (abs(bestData.Pepisode(thisTrial)) - mean(binaryMatrix(freqInd, teleInds))) > tol
+    if (abs(bestNav.Pepisode(thisTrial)) - mean(binaryMatrix(freqInd, teleInds))) > tol
         error('Pepisode does not match expected value.')
     end
     
-    eegTimes = EEG.times(teleInds);
-    
 end
 
-save('../mat/RawDataBestPepisodeTrials_1-8Hz.mat', 'allEEGData', 'allBinaryData', 'eegTimes', 'frequencies')
+save('../mat/RawDataBestPepisodeTrials_1-8Hz.mat', 'allTeleEEGData', 'allTeleBinaryData',  'allNavEEGData', 'allNavBinaryData', 'eegNtTimes', 'eegFtTimes', 'frequencies')
