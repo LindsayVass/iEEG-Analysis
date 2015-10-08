@@ -41,6 +41,25 @@ bestData <- bestData %>%
   inner_join(allPepisode) %>%
   select(ElectrodeID, RealTrialNumber, TrialSpaceType, TrialTimeType, Frequency, TelePepisode, NavPepisode)
 
-dir.create('mat')
-writeMat('mat/bestPepisodeTrials.mat', bestData = bestData)
-save(file = 'Rda/bestPepisodeTrials.Rda', list = 'bestData')
+# Convert from RealTrialNumber, to TrialNumber, which only indexes valid trials
+bestTele <- bestData %>%
+  select(ElectrodeID:RealTrialNumber) %>%
+  inner_join(teleSustain) %>%
+  select(ElectrodeID, RealTrialNumber, TrialNumber) %>%
+  unique() %>%
+  inner_join(bestData) %>%
+  select(-NavPepisode) %>%
+  rename(Pepisode = TelePepisode)
+
+bestNav <- bestData %>%
+  select(ElectrodeID:RealTrialNumber) %>%
+  inner_join(navSustain) %>%
+  select(ElectrodeID, RealTrialNumber, TrialNumber) %>%
+  unique() %>%
+  inner_join(bestData) %>%
+  select(-TelePepisode) %>%
+  rename(Pepisode = NavPepisode)
+
+#dir.create('mat')
+writeMat('mat/bestPepisodeTrials.mat', bestTele = bestTele, bestNav = bestNav)
+save(file = 'Rda/bestPepisodeTrials.Rda', list = c('bestTele', 'bestNav'))
