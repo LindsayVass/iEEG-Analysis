@@ -13,7 +13,8 @@ load('../Pepisode_Sustainedness/Rda/allCleanData.Rda')
 # number of trials
 numTrials <- 5
 
-topElectrodes <- data.frame(ElectrodeID = c("UCDMC13_TeleporterA_LAD1", "UCDMC14_TeleporterB_RHD2"))
+#topElectrodes <- data.frame(ElectrodeID = c("UCDMC13_TeleporterA_LAD1", "UCDMC14_TeleporterB_RHD2"))
+topElectrodes <- data.frame(ElectrodeID = c("UCDMC15_TeleporterB_LHD1", "UCDMC13_TeleporterA_LHD1"))
 
 # select top electrodes for the "both" model
 topClass <- allMeanClassificationResults %>%
