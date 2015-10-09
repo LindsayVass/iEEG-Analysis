@@ -22,8 +22,21 @@ summarySpeedData <- speedData %>%
 groupSummarySpeedData <- speedData %>%
   ungroup() %>%
   group_by(Interval) %>%
-  summarise(MeanSpeed = mean(Speed),
-            SEMSpeed = sd(Speed) / sqrt(n()))
+  summarise(MeanSpeed = mean(Speed * 1000), # multiply by 1000 to convert to units/s
+            SEMSpeed = sd(Speed * 1000) / sqrt(n()))
+
+subjectSummarySpeedData <- speedData %>%
+  ungroup() %>%
+  group_by(Interval, Subject) %>%
+  summarise(MeanSpeed = mean(Speed * 1000), # multiply by 1000 to convert to units/s
+            SEMSpeed = sd(Speed * 1000) / sqrt(n()))
+
+UCDMC1315Summary <- speedData %>%
+  filter(Subject != "UCDMC14") %>%
+  ungroup() %>%
+  group_by(Interval) %>%
+  summarise(MeanSpeed = mean(Speed * 1000), # multiply by 1000 to convert to units/s
+            SEMSpeed = sd(Speed * 1000) / sqrt(n()))
 
 summaryStats <- speedData %>%
   dcast(ElectrodeID + TrialNumber ~ Interval, value.var = "Speed") %>%
