@@ -120,12 +120,30 @@ if visualize == 1
         
         figure;
         contourf(EEG.times, frequencies, squeeze(ntITPC(thisElec, :, :))', 40, 'linecolor', 'none');
-        set(gca, 'ytick', round(logspace(log10(frequencies(1)), log10(frequencies(end)), 10) * 100) / 100, 'yscale', 'log', 'clim', [0 0.6])
+        set(gca, 'ytick', round(logspace(log10(frequencies(1)), log10(frequencies(end)), 10) * 100) / 100, ...
+            'yscale', 'log', ...
+            'clim', [0 0.6], ...
+            'xlim', [-1000 3000])
         title(['NT Phase Clustering for ' EEG.chanlocs(thisElec).labels])
+        ylims = get(gca, 'ylim');
+        hold on
+        plot([0 0], ylims, 'w--', 'LineWidth', 2)
+        plot([1830 1830], ylims, 'w--', 'LineWidth', 2)
+        hold off
+        colorbar
         
         figure;
         contourf(EEG.times, frequencies, squeeze(ftITPC(thisElec, :, :))', 40, 'linecolor', 'none');
-        set(gca, 'ytick', round(logspace(log10(frequencies(1)), log10(frequencies(end)), 10) * 100) / 100, 'yscale', 'log', 'clim', [0 0.6])
+        set(gca, 'ytick', round(logspace(log10(frequencies(1)), log10(frequencies(end)), 10) * 100) / 100, ...
+            'yscale', 'log', ...
+            'clim', [0 0.6], ...
+            'xlim', [-1000 5000])
         title(['FT Phase Clustering for ' EEG.chanlocs(thisElec).labels])
+        ylims = get(gca, 'ylim');
+        hold on
+        plot([0 0], ylims, 'w--', 'LineWidth', 2)
+        plot([2830 2830], ylims, 'w--', 'LineWidth', 2)
+        hold off
+        colorbar
     end
 end
