@@ -48,3 +48,5 @@ Group Analysis/Pepisode/.RData
 *.Rda
 
 *.txt
+
+iEEG Pipeline/Sample Data/*
