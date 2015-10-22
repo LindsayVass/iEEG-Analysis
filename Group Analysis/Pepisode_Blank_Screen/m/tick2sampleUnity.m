@@ -1,4 +1,4 @@
-function thisSample = tick2sampleUnity(thisTick, EDF1ticks, EDF2ticks, EDF1samples, EDF2samples)
+function [thisSample, EDF] = tick2sampleUnity(thisTick, EDF1ticks, EDF2ticks, EDF1samples, EDF2samples)
 % Convert from ticks to EEG samples using Unity pulses
 % >> thisSample = tick2sampleUnity(thisTick, EDF1ticks, EDF2ticks, EDF1samples, EDF2samples)
 %
@@ -11,18 +11,22 @@ function thisSample = tick2sampleUnity(thisTick, EDF1ticks, EDF2ticks, EDF1sampl
 %
 % Output:
 %   thisSample: time (in samples) of thisTick
+%   EDF: which EDF is thisTick found in (1 or 2)
 
 if thisTick - EDF1ticks(end) < 0 % if in EDF1
     
     thisSample = fitTicks(thisTick, EDF1ticks, EDF1samples, 5);
+    EDF = 1;
     
 elseif thisTick - EDF2ticks(1) <0 % trial in lost EEG between EDFs
     
     thisSample = NaN;
+    EDF = NaN;
     
 else % in EDF2
     
     thisSample = fitTicks(thisTick, EDF2ticks, EDF2samples, 5);
+    EDF = 2;
     
 end
 
