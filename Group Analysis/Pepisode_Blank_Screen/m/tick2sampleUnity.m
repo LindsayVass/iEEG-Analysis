@@ -18,7 +18,7 @@ if thisTick - EDF1ticks(end) < 0 % if in EDF1
     
 elseif thisTick - EDF2ticks(1) <0 % trial in lost EEG between EDFs
     
-    thisSample = [];
+    thisSample = NaN;
     
 else % in EDF2
     
@@ -40,5 +40,4 @@ fitInds(fitInds > length(tickList)) = [];
 
 % get fit of line using the inds selected above
 fitP = polyfit(tickList(fitInds), sampleList(fitInds), 1);
-fitY = polyval(fitP, tickList(fitInds));
 thisSample = round(thisTick * fitP(1) + fitP(2));
