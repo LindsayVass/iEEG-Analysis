@@ -48,11 +48,41 @@ for thisSubject = 1:length(sessionInfo.subjectID)
             
             freeExploreTick = getFreeExploreTick(freeExplorePath, 0);
             navigationTick  = getNavigationTick(navigationPath, 0);
-
+            
         else % handle different txt file format for UCDMC15
             
             freeExploreTick = getFreeExploreTick(freeExplorePath, 1);
             navigationTick  = getNavigationTick(navigationPath, 1);
+            
+        end
+        
+        % Conver time in ticks to time in EEG samples
+        if strcmpi(subjectID, 'UCDMC15') == 0
+            
+            % load time sync mat file
+            load([experimentPath 'Subjects/' subjectID '/Mat Files/' subjectID '_' sessionID  '_time_sync.mat'])
+            
+            % convert from ticks to samples
+            freeExploreOnset = round(freeExploreTick * time_sync_regression(1) + time_sync_regression(2));
+            navigationOnset  = round(navigationTick * time_sync_regression(1) + time_sync_regression(2));
+            
+            
+        else % use unity pulses for UCDMC15
+            
+            % load pulses mat files (one for each EDF)
+            load([experimentPath 'Subjects/' subjectID '/Mat Files/' subjectID '_' sessionID '_EDF1_pulse_timing.mat'])
+            indEEG1 = indEEG;
+            unityTicks1 = unityTicks;
+            
+            load([experimentPath 'Subjects/' subjectID '/Mat Files/' subjectID '_' sessionID '_EDF2_pulse_timing.mat'])
+            indEEG2 = indEEG;
+            unityTicks2 = unityTicks;
+            
+            clear indEEG unityTicks;
+            
+            % convert from ticks to samples
+            freeExploreOnset = tick2sampleUnity(freeExploreTick, unityTicks1, unityTicks2, indEEG1, indEEG2);
+            navigationOnset  = tick2sampleUnity(navigationTick, unityTicks1, unityTicks2, indEEG1, indEEG2);
             
         end
         
