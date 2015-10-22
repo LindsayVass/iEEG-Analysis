@@ -81,13 +81,26 @@ for thisSubject = 1:length(sessionInfo.subjectID)
             clear indEEG unityTicks;
             
             % convert from ticks to samples
-            freeExploreOnset = tick2sampleUnity(freeExploreTick, unityTicks1, unityTicks2, indEEG1, indEEG2);
-            navigationOnset  = tick2sampleUnity(navigationTick, unityTicks1, unityTicks2, indEEG1, indEEG2);
+            [freeExploreOnset, freeExploreEDF] = tick2sampleUnity(freeExploreTick, unityTicks1, unityTicks2, indEEG1, indEEG2);
+            [navigationOnset, navigationEDF]  = tick2sampleUnity(navigationTick, unityTicks1, unityTicks2, indEEG1, indEEG2);
             
         end
         
         % Loop over depth electrodes
         for thisElec = 1:length(sessionInfo(thisSubject).teleporter(thisSession).depths)
+            
+            depthID  = sessionInfo(thisSubject).teleporter(thisSession).depths(thisElec).name{1};
+            chanList = sessionInfo(thisSubject).teleporter(thisSession).depths(thisElec).chanList;
+            
+            % get path of EEG file
+            if strcmpi(subjectID, 'UCDMC15') == 0
+                freeExploreEegPath = [experimentPath 'Subjects/' subjectID '/PreProcessing Intermediates/' subjectID '_' sessionID '_unepoched_' depthID '_marked.set'];
+                navigationEegPath  = [experimentPath 'Subjects/' subjectID '/PreProcessing Intermediates/' subjectID '_' sessionID '_unepoched_' depthID '_marked.set'];
+            else % handle 2 EDFs
+                freeExploreEegPath = [experimentPath 'Subjects/' subjectID '/PreProcessing Intermediates/' subjectID '_' sessionID '_EDF' num2str(freeExploreEDF) '_unepoched_' depthID '_marked.set'];
+                navigationEegPath = [experimentPath 'Subjects/' subjectID '/PreProcessing Intermediates/' subjectID '_' sessionID '_EDF' num2str(navigationEDF) '_unepoched_' depthID '_marked.set'];
+            end
+            
             
             % Make epochs
             
