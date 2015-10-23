@@ -26,7 +26,7 @@ excludedArtifacts = {'spike','complex','other','sharpWave'};
 output = {'Subject', 'Teleporter', 'Electrode', 'Condition', 'EpochLength', 'Frequency', 'Pepisode'};
 
 % Path to save csv output
-outputPath = [experimentPath 'Group Analysis/Pepisode_Blank_Screen/mat/output_' date '.csv'];
+outputPath = [experimentPath 'Group Analysis/Pepisode_Blank_Screen/csv/output_' date '.csv'];
 
 % Loop over subjects
 for thisSubject = 1:length(sessionInfo)
