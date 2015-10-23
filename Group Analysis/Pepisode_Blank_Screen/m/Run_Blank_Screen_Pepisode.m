@@ -103,6 +103,8 @@ for thisSubject = 1:length(sessionInfo)
         % Loop over depth electrodes
         for thisElec = 1:length(sessionInfo(thisSubject).teleporter(thisSession).depths)
             
+            clear freeExploreEEG navigationEEG shortFreeExploreEEG longFreeExploreEEG shortNavigationEEG longNavigationEEG
+            
             depthID  = sessionInfo(thisSubject).teleporter(thisSession).depths(thisElec).name{1};
             chanList = sessionInfo(thisSubject).teleporter(thisSession).depths(thisElec).chanList;
             
@@ -144,11 +146,30 @@ for thisSubject = 1:length(sessionInfo)
             end
             
             % Make epochs
-            shortFreeExploreEEG = pop_epoch(freeExploreEEG, {'1'}, shortEpoch);
-            longFreeExploreEEG  = pop_epoch(freeExploreEEG, {'2'}, longEpoch);
+            try
+                shortFreeExploreEEG = pop_epoch(freeExploreEEG, {'1'}, shortEpoch);
+            catch
+                shortFree = 0;
+            end
             
-            shortNavigationEEG = pop_epoch(navigationEEG, {'1'}, shortEpoch);
-            longNavigationEEG  = pop_epoch(navigationEEG, {'2'}, longEpoch);
+            try
+                longFreeExploreEEG  = pop_epoch(freeExploreEEG, {'2'}, longEpoch);
+            catch
+                longFree = 0;
+            end
+            
+            try
+                shortNavigationEEG = pop_epoch(navigationEEG, {'1'}, shortEpoch);
+            catch
+                shortNav = 0;
+            end
+            
+            try
+                longNavigationEEG  = pop_epoch(navigationEEG, {'2'}, longEpoch);
+            catch
+                longNav = 0;
+            end
+            
             
             % Loop over channels on this electrode
             chanList = sessionInfo(thisSubject).teleporter(thisSession).depths(thisElec).chanList;
@@ -160,20 +181,35 @@ for thisSubject = 1:length(sessionInfo)
                 load(powerDistPath);
                 
                 % Calculate pepisode
-                [~, shortFreeExplorePepisode] = calcEpochedPepisodeLKV(powerDistribution, [powerDistribution.frequency], shortFreeExploreEEG.data(chanInd, :), shortFreeExploreEEG.srate, 95, 3);
-                [~, longFreeExplorePepisode]  = calcEpochedPepisodeLKV(powerDistribution, [powerDistribution.frequency], longFreeExploreEEG.data(chanInd, :), longFreeExploreEEG.srate, 95, 3);
-                [~, shortNavigationPepisode]  = calcEpochedPepisodeLKV(powerDistribution, [powerDistribution.frequency], shortNavigationEEG.data(chanInd, :), shortNavigationEEG.srate, 95, 3);
-                [~, longNavigationPepisode]   = calcEpochedPepisodeLKV(powerDistribution, [powerDistribution.frequency], longNavigationEEG.data(chanInd, :), longNavigationEEG.srate, 95, 3);
+                if ~exist('shortFree', 'var')
+                    [~, shortFreeExplorePepisode] = calcEpochedPepisodeLKV(powerDistribution, [powerDistribution.frequency], shortFreeExploreEEG.data(chanInd, :), shortFreeExploreEEG.srate, 95, 3);
+                end
+                if ~exist('longFree', 'var')
+                    [~, longFreeExplorePepisode]  = calcEpochedPepisodeLKV(powerDistribution, [powerDistribution.frequency], longFreeExploreEEG.data(chanInd, :), longFreeExploreEEG.srate, 95, 3);
+                end
+                if ~exist('shortNav', 'var')
+                    [~, shortNavigationPepisode]  = calcEpochedPepisodeLKV(powerDistribution, [powerDistribution.frequency], shortNavigationEEG.data(chanInd, :), shortNavigationEEG.srate, 95, 3);
+                end
+                if ~exist('longNav', 'var')
+                    [~, longNavigationPepisode]   = calcEpochedPepisodeLKV(powerDistribution, [powerDistribution.frequency], longNavigationEEG.data(chanInd, :), longNavigationEEG.srate, 95, 3);
+                end
                 
                 % Add data to output array
                 % Loop over frequencies
                 freqList = [powerDistribution.frequency];
                 for thisFreq = 1:length(freqList)
-                    
-                    output(end + 1, :) = {subjectID, sessionID, chanList{thisChan}, 'FreeExplore', 'Short', freqList(thisFreq), shortFreeExplorePepisode(thisFreq)};
-                    output(end + 1, :) = {subjectID, sessionID, chanList{thisChan}, 'FreeExplore', 'Long', freqList(thisFreq), longFreeExplorePepisode(thisFreq)};
-                    output(end + 1, :) = {subjectID, sessionID, chanList{thisChan}, 'Navigation', 'Short', freqList(thisFreq), shortNavigationPepisode(thisFreq)};
-                    output(end + 1, :) = {subjectID, sessionID, chanList{thisChan}, 'Navigation', 'Long', freqList(thisFreq), longNavigationPepisode(thisFreq)};
+                    if ~exist('shortFree', 'var')
+                        output(end + 1, :) = {subjectID, sessionID, chanList{thisChan}, 'FreeExplore', 'Short', freqList(thisFreq), shortFreeExplorePepisode(thisFreq)};
+                    end
+                    if ~exist('longFree', 'var')
+                        output(end + 1, :) = {subjectID, sessionID, chanList{thisChan}, 'FreeExplore', 'Long', freqList(thisFreq), longFreeExplorePepisode(thisFreq)};
+                    end
+                    if ~exist('shortNav', 'var')
+                        output(end + 1, :) = {subjectID, sessionID, chanList{thisChan}, 'Navigation', 'Short', freqList(thisFreq), shortNavigationPepisode(thisFreq)};
+                    end
+                    if ~exist('longNav', 'var')
+                        output(end + 1, :) = {subjectID, sessionID, chanList{thisChan}, 'Navigation', 'Long', freqList(thisFreq), longNavigationPepisode(thisFreq)};
+                    end
                     
                 end % thisFreq
                 
