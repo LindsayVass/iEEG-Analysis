@@ -14,6 +14,13 @@ experimentPath  = '/Users/Lindsay/Documents/MATLAB/iEEG/';
 sessionInfoPath = [experimentPath 'Group Analysis/Subject Info/SessionInfo2.mat'];
 load(sessionInfoPath);
 
+% Epoch intervals in ms
+shortEpoch = [0 1830];
+longEpoch  = [0 2830];
+
+% Which artifacts to exclude
+excludedArtifacts = {'spike','complex','other','sharpWave'};
+
 % Loop over subjects
 for thisSubject = 1:length(sessionInfo.subjectID)
     
@@ -101,6 +108,33 @@ for thisSubject = 1:length(sessionInfo.subjectID)
                 navigationEegPath = [experimentPath 'Subjects/' subjectID '/PreProcessing Intermediates/' subjectID '_' sessionID '_EDF' num2str(navigationEDF) '_unepoched_' depthID '_marked.set'];
             end
             
+            % load EEG
+            freeExploreEEG = pop_loadset(freeExploreEegPath);
+            navigationEEG  = pop_loadset(navigationEegPath);
+            
+            % Insert events into EEG
+            freeExploreEEG = addEvent(freeExploreEEG, freeExploreOnset, 1);
+            freeExploreEEG = addEvent(freeExploreEEG, freeExploreOnset, 2);
+            
+            navigationEEG  = addEvent(navigationEEG, navigationOnset, 1);
+            navigationEEG  = addEvent(navigationEEG, navigationOnset, 2);
+            
+            % Exclude artifacts
+            freeExploreIndexes = marks_label2index(freeExploreEEG.marks.time_info, excludedArtifacts, 'indexes', 'exact', 'on');
+            
+            if isempty(freeExploreIndexes)
+                warning('No artifacts found.')
+            else
+                [freeExploreEEG,~] = pop_marks_select_data(freeExploreEEG, 'time marks', freeExploreIndexes);
+            end
+            
+            navigationIndexes = marks_label2index(navigationEEG.marks.time_info, excludedArtifacts, 'indexes', 'exact', 'on');
+            
+            if isempty(navigationIndexes)
+                warning('No artifacts found.')
+            else
+                [navigationEEG,~] = pop_marks_select_data(navigationEEG, 'time marks', navigationIndexes);
+            end
             
             % Make epochs
             
