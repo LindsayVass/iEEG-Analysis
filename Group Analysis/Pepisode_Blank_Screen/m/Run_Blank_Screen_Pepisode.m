@@ -8,6 +8,7 @@
 % Lindsay Vass
 % 22 October 2015
 
+clear all; close all; clc;
 
 % Structure containing subject/session info
 experimentPath  = '/Users/Lindsay/Documents/MATLAB/iEEG/';
@@ -28,7 +29,7 @@ output = {'Subject', 'Teleporter', 'Electrode', 'Condition', 'EpochLength', 'Fre
 outputPath = [experimentPath 'Group Analysis/Pepisode_Blank_Screen/mat/output_' date '.csv'];
 
 % Loop over subjects
-for thisSubject = 1:length(sessionInfo.subjectID)
+for thisSubject = 1:length(sessionInfo)
     
     subjectID = sessionInfo(thisSubject).subjectID{1};
     
