@@ -175,7 +175,7 @@ for thisSubject = 1:length(sessionInfo)
             chanList = sessionInfo(thisSubject).teleporter(thisSession).depths(thisElec).chanList;
             for thisChan = 1:length(chanList)
                 
-                chanInd = find(strcmpi(chanList{thisChan}, {shortFreeExploreEEG.chanlocs.labels}));
+                chanInd = find(strcmpi(chanList{thisChan}, {freeExploreEEG.chanlocs.labels}));
                 
                 powerDistPath = [experimentPath 'Subjects/' subjectID '/Mat Files/Pepisode/Power Distributions/' subjectID '_' sessionID '_' chanList{thisChan} '_power_distribution.mat'];
                 load(powerDistPath);
