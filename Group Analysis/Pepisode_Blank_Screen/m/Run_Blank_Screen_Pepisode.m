@@ -15,11 +15,17 @@ sessionInfoPath = [experimentPath 'Group Analysis/Subject Info/SessionInfo2.mat'
 load(sessionInfoPath);
 
 % Epoch intervals in ms
-shortEpoch = [0 1830];
-longEpoch  = [0 2830];
+shortEpoch = [0 1.83];
+longEpoch  = [0 2.83];
 
 % Which artifacts to exclude
 excludedArtifacts = {'spike','complex','other','sharpWave'};
+
+% Prepare output array
+output = {'Subject', 'Teleporter', 'Electrode', 'Condition', 'EpochLength', 'Frequency', 'Pepisode'};
+
+% Path to save csv output
+outputPath = [experimentPath 'Group Analysis/Pepisode_Blank_Screen/mat/output_' date '.csv'];
 
 % Loop over subjects
 for thisSubject = 1:length(sessionInfo.subjectID)
@@ -137,13 +143,46 @@ for thisSubject = 1:length(sessionInfo.subjectID)
             end
             
             % Make epochs
+            shortFreeExploreEEG = pop_epoch(freeExploreEEG, {'1'}, shortEpoch);
+            longFreeExploreEEG  = pop_epoch(freeExploreEEG, {'2'}, longEpoch);
             
-            % Calculate pepisode
+            shortNavigationEEG = pop_epoch(navigationEEG, {'1'}, shortEpoch);
+            longNavigationEEG  = pop_epoch(navigationEEG, {'2'}, longEpoch);
             
-            % Export data
+            % Loop over channels on this electrode
+            chanList = sessionInfo(thisSubject).teleporter(thisSession).depths(thisElec).chanList;
+            for thisChan = 1:length(chanList)
+                
+                chanInd = find(strcmpi(chanList{thisChan}, {shortFreeExploreEEG.chanlocs.labels}));
+                
+                powerDistPath = [experimentPath 'Subjects/' subjectID '/Mat Files/Pepisode/Power Distributions/' subjectID '_' sessionID '_' chanList{thisChan} '_power_distribution.mat'];
+                load(powerDistPath);
+                
+                % Calculate pepisode
+                [~, shortFreeExplorePepisode] = calcEpochedPepisodeLKV(powerDistribution, [powerDistribution.frequency], shortFreeExploreEEG.data(chanInd, :), shortFreeExploreEEG.srate, 95, 3);
+                [~, longFreeExplorePepisode]  = calcEpochedPepisodeLKV(powerDistribution, [powerDistribution.frequency], longFreeExploreEEG.data(chanInd, :), longFreeExploreEEG.srate, 95, 3);
+                [~, shortNavigationPepisode]  = calcEpochedPepisodeLKV(powerDistribution, [powerDistribution.frequency], shortNavigationEEG.data(chanInd, :), shortNavigationEEG.srate, 95, 3);
+                [~, longNavigationPepisode]   = calcEpochedPepisodeLKV(powerDistribution, [powerDistribution.frequency], longNavigationEEG.data(chanInd, :), longNavigationEEG.srate, 95, 3);
+                
+                % Add data to output array
+                % Loop over frequencies
+                freqList = [powerDistribution.frequency];
+                for thisFreq = 1:length(freqList)
+                    
+                    output(end + 1, :) = {subjectID, sessionID, chanList{thisChan}, 'FreeExplore', 'Short', freqList(thisFreq), shortFreeExplorePepisode(thisFreq)};
+                    output(end + 1, :) = {subjectID, sessionID, chanList{thisChan}, 'FreeExplore', 'Long', freqList(thisFreq), longFreeExplorePepisode(thisFreq)};
+                    output(end + 1, :) = {subjectID, sessionID, chanList{thisChan}, 'Navigation', 'Short', freqList(thisFreq), shortNavigationPepisode(thisFreq)};
+                    output(end + 1, :) = {subjectID, sessionID, chanList{thisChan}, 'Navigation', 'Long', freqList(thisFreq), longNavigationPepisode(thisFreq)};
+                    
+                end % thisFreq
+                
+            end % thisChan
             
         end % thisElec
         
     end % thisSession
     
 end % thisSubject
+
+% Save output data
+dlmcell(outputPath, output);
