@@ -222,4 +222,4 @@ for thisSubject = 1:length(sessionInfo)
 end % thisSubject
 
 % Save output data
-dlmcell(outputPath, output);
+dlmcell(outputPath, output, 'delimiter', ',');
