@@ -1,7 +1,6 @@
 % Pre-process UCDMC14 data using new pipeline
 
 %% set up file naming
-
 eeglab;
 
 % experiment directory, contains a folder for each patient
@@ -10,10 +9,10 @@ expDir = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/';
 % patient ID, same as name of patient folder (expDir/subjID)
 subjID  = 'UCDMC14';
 subjDir = [expDir subjID '/'];
-saveStem = 'UCDMC14_TeleporterA_';
+saveStem = 'UCDMC14_TeleporterB_';
 
 %% load raw data 
-edfPath = [subjDir 'Raw Data/UCDMC14_020415_teleporter.edf'];
+edfPath = [subjDir 'Raw Data/UCDMC14_020715.edf'];
 EEG     = edf2eeg(edfPath, subjID);
 
 %% save raw data as EEG mat
@@ -27,7 +26,7 @@ savePath = [preprocDir saveStem 'raw.set'];
 pop_saveset(EEG, savePath);
 
 %% check for electrodes with gross signal artifacts
-EEG = pop_loadset(filePath);
+EEG = pop_loadset(savePath);
 eeglab redraw;
 
 % mark the marker channel and any obviously bad channels
@@ -58,12 +57,12 @@ pop_saveset(EEGreref, savePath);
 %% perform artifact detection/removal
 
 % prepare data
-origDataPath = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/PreProcessing Intermediates/Pipeline/UCDMC14_TeleporterA_C01_Reref_All.set';
+origDataPath = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/PreProcessing Intermediates/Pipeline/UCDMC14_TeleporterB_C01_Reref_All.set';
 EEG = pop_loadset(origDataPath);
 eeglab redraw;
 
-outputDir = [preprocDir 'UCDMC14_TeleporterA_C01_Reref_All/'];
-outputStem = 'UCDMC14_TeleporterA_C01_Reref_All_';
+outputDir = [preprocDir 'UCDMC14_TeleporterB_C01_Reref_All/'];
+outputStem = 'UCDMC14_TeleporterB_C01_Reref_All_';
 
 % Clean the data for each channel separately. This next function will first
 % split your dataset into multiple data sets containing one channel each.
@@ -106,7 +105,7 @@ for thisFile = 1:length(mergeFileList)
 end
 
 %% add experiment events
-epochsPath = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/Mat Files/UCDMC14_TeleporterA_Epochs_Entry.mat';
+epochsPath = '/Users/Lindsay/Documents/MATLAB/iEEG/Subjects/UCDMC14/Mat Files/UCDMC14_TeleporterB_Epochs_Entry.mat';
 load(epochsPath);
 eStart = -3;
 eEnd   = 6;
@@ -143,10 +142,10 @@ for thisFile = 1:length(mergeFileList)
     
     % save epoched data
     stripName = mergeFileList{thisFile}(end-6:end-4);
-    epochSavePath = [subjDir 'Epoched Data/Pipeline/UCDMC14_TeleporterA_' stripName '_epoched.set'];
+    epochSavePath = [subjDir 'Epoched Data/Pipeline/UCDMC14_TeleporterB_' stripName '_epoched.set'];
     pop_saveset(epochEEG, epochSavePath);
     
-    matSavePath = [subjDir 'Mat Files/Pipeline/UCDMC14_TeleporterA_' stripName '_goodEpochs.mat'];
+    matSavePath = [subjDir 'Mat Files/Pipeline/UCDMC14_TeleporterB_' stripName '_goodEpochs.mat'];
     save(matSavePath, 'goodEpochs');
     
 end
