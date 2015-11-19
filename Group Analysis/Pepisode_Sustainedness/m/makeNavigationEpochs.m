@@ -159,6 +159,7 @@ epochPreBins = 3 * EEG.srate; % how much to shift for time zero
 % initialize output
 epochTimeZero = nan(length(enterTeleporterBins), 1);
 epochType     = epochTimeZero;
+navTeleIntervalSecs = [];
 
 for thisTrial = 1:length(enterTeleporterBins)
     
@@ -231,6 +232,8 @@ for thisTrial = 1:length(enterTeleporterBins)
         
     end
     
+    navTeleIntervalSecs(end + 1) = (thisEndBin - (epochTimeZero(thisTrial) + 2*epochPreBins))/EEG.srate;
+    
 end
 
 % remove invalid trials
@@ -276,10 +279,14 @@ else
     end
     
     % Save list of good epochs for this electrode
+    % Also save list of intervals between end of navigation epoch and start
+    % of teleportation epoch
     if ~exist('thisEDF', 'var')
         save([subjectDir 'Mat Files/' thisSubject '_' thisSession '_' thisElectrode '_navigation_goodEpochs.mat'],'goodNavEpochs');
+        save([subjectDir 'Mat Files/' thisSubject '_' thisSession '_' thisElectrode '_navigation_teleportation_epoch_intervals.mat'], 'navTeleIntervalSecs');
     else
         save([subjectDir 'Mat Files/' thisSubject '_' thisSession '_' thisElectrode '_navigation_goodEpochs_EDF' num2str(thisEDF) '.mat'],'goodNavEpochs');
+        save([subjectDir 'Mat Files/' thisSubject '_' thisSession '_' thisElectrode '_navigation_teleportation_epoch_intervals_EDF' num2str(thisEDF) '.mat'], 'navTeleIntervalSecs');
     end
         
 end
