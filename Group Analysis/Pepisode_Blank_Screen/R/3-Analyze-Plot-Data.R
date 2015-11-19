@@ -5,6 +5,7 @@
 #               Tele and between Blank & Nav using Wilcoxon signed rank tests.
 #               It will then plot the mean pepisode across electrodes in a bar chart.
 
+library(dplyr)
 library(ggplot2)
 library(coin)
 library(ggthemes)
