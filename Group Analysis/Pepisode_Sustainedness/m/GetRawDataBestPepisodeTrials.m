@@ -4,8 +4,10 @@
 addpath(genpath('/Users/Lindsay/Documents/MATLAB/eeglab13_4_4b/'))
 
 % output from ../R/4b-Select-Single-Trial-Data.R
-inputMat = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Pepisode_Sustainedness/mat/bestSingleTrials.mat';
+%inputMat = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Pepisode_Sustainedness/mat/bestSingleTrials.mat';
 %inputMat = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Pepisode_Sustainedness/mat/testSingleTrials.mat';
+inputMat = '/Users/Lindsay/Documents/MATLAB/iEEG/Group Analysis/Pepisode_Sustainedness/mat/allSingleTrials.mat';
+
 
 load(inputMat)
 
@@ -114,4 +116,5 @@ for thisObs = 1:length(manualBestTrials.RealTrialNumber)
     end
 end
 
-save('../mat/bestSingleTrialsRawData.mat', 'allNavEEGData', 'allTeleEEGData', 'allNavBinaryData', 'allTeleBinaryData', 'allNavEEGTimes', 'allTeleEEGTimes')
+%save('../mat/bestSingleTrialsRawData.mat', 'allNavEEGData', 'allTeleEEGData', 'allNavBinaryData', 'allTeleBinaryData', 'allNavEEGTimes', 'allTeleEEGTimes')
+save('../mat/allSingleTrialsRawData.mat', 'allNavEEGData', 'allTeleEEGData', 'allNavBinaryData', 'allTeleBinaryData', 'allNavEEGTimes', 'allTeleEEGTimes')

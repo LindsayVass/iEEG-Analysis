@@ -71,7 +71,21 @@ manualBestTrials <- data.frame(ElectrodeID = c("UCDMC15_TeleporterB_LHD3",
   inner_join(teleTrialNumbers) %>%
   select(-c(Subject, Session, Electrode))
 
+allTrials <- sigElectrodeTrials %>%
+  select(ElectrodeID, RealTrialNumber) %>%
+  unique() %>%
+  mutate(Frequency = freqs[8]) %>%
+  inner_join(allPepisode) 
+allTrials <- tidyr::separate(allTrials, ElectrodeID, c('Subject', 'Session', 'Electrode'), remove = FALSE) %>%
+  mutate(Electrode = substr(Electrode, 1, 3)) %>%
+  inner_join(navTrialNumbers) %>%
+  inner_join(teleTrialNumbers) %>%
+  select(-c(Subject, Session, Electrode))
+
 
 save(file = 'Rda/bestSingleTrials.Rda', list = 'manualBestTrials')
 writeMat('mat/bestSingleTrials.mat', manualBestTrials = manualBestTrials)
+
+save(file = 'Rda/allSingleTrials.Rda', list = 'allTrials')
+writeMat('mat/allSingleTrials.mat', manualBestTrials = allTrials)
 

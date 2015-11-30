@@ -203,18 +203,6 @@ trueNSigElectrodes$Contrast <- plyr::mapvalues(trueNSigElectrodes$Contrast,
                                                from = c('TeleGtPost', 'TeleGtPre', 'TeleLtPost', 'TeleLtPre'), 
                                                to = c('Tele > Post', 'Tele > Pre', 'Tele < Post', 'Tele < Pre'))
 
-
-ggplot(trueNSigElectrodes, aes(x = Frequency, y = Count)) +
-  geom_point(size = 4) +
-  scale_x_log10(breaks = c(2,4,8,16,32,64,128)) +
-  scale_y_continuous(breaks = c(2,4,6,8,10,12,14)) +
-  facet_wrap(~Contrast) +
-  ylab('# Significant Electrodes') +
-  xlab("Frequency (Hz)") +
-  theme(text = element_text(size = 24))
-
-
-
 # Determine number of electrodes significant by chance --------------------
 elecPerm = 1000
 
@@ -245,12 +233,12 @@ for (i in 1:elecPerm) {
   permData[[i]] <- tmp
 }
 
-permData <- as.data.frame(rbindlist(permData)) %>%
-  mutate_each(funs(as.numeric), TeleLtPre, TeleGtPre, TeleGtPost, TeleLtPost)
+permDataDf <- as.data.frame(rbindlist(permData)) %>%
+  mutate_each(funs(as.numeric), TeleLtPre_pvalue, TeleGtPre_pvalue, TeleGtPost_pvalue, TeleLtPost_pvalue)
 
-permNSigElectrodes <- permData %>%
-  melt(id.vars = c("ElectrodeID", "FrequencyBand", "Iteration"), variable.name = "Contrast", value.name = "PValue") %>%
-  group_by(FrequencyBand, Iteration, Contrast) %>%
+permNSigElectrodes <- permDataDf %>%
+  melt(id.vars = c("ElectrodeID", "Frequency", "Iteration"), variable.name = "Contrast", value.name = "PValue") %>%
+  group_by(Frequency, Iteration, Contrast) %>%
   filter(PValue < 0.05) %>%
   summarise(Count = n()) %>%
   ungroup() %>%
@@ -272,4 +260,29 @@ remove(electrodeP)
 
 trueNSigElectrodes <- inner_join(trueNSigElectrodes, electrodePCorr)
 
-save(file = 'Rda/allAnalyzedData.Rda', list = c('cleanData', 'electrodePCorr', 'moltenTrueData', 'permData', 'permNSigElectrodes', 'trueData', 'trueNSigElectrodes'))
+save(file = 'Rda/allAnalyzedData_EachFreq.Rda', list = c('cleanData', 'electrodePCorr', 'moltenTrueData', 'permData', 'permNSigElectrodes', 'trueData', 'validData', 'trueNSigElectrodes'))
+
+## Plot Results
+threshP <- electrodePCorr$Count[max(which(electrodePCorr$PValueElec > 0.05))] + 0.5
+
+trueZero <- moltenTrueData %>%
+  select(Contrast, Frequency) %>%
+  unique()
+trueZero$Contrast <- plyr::mapvalues(trueZero$Contrast, 
+                                               from = c('TeleGtPost', 'TeleGtPre', 'TeleLtPost', 'TeleLtPre'), 
+                                               to = c('Tele > Post', 'Tele > Pre', 'Tele < Post', 'Tele < Pre'))
+trueZero <- anti_join(trueZero, trueNSigElectrodes) %>%
+  mutate(Count = 0,
+         PValueElec = 1)
+trueNSigElectrodes <- rbind(trueNSigElectrodes, trueZero)
+
+ggplot(trueNSigElectrodes, aes(x = Frequency, y = Count)) +
+  geom_point(size = 4) +
+  geom_hline(aes(yintercept = threshP), color = 'red') +
+  scale_x_log10(breaks = c(2,4,8,16,32,64,128)) +
+  scale_y_continuous(breaks = c(2,4,6,8,10,12,14)) +
+  facet_wrap(~Contrast) +
+  ylab('# Significant Electrodes') +
+  xlab("Frequency (Hz)") +
+  theme(text = element_text(size = 24))
+ggsave('Figures/TimePointContrast_EachFrequency.pdf')

@@ -91,3 +91,47 @@ p <- validData %>%
   facet_grid( ~ FrequencyBand)
 #dir.create('Figures/SingleElectrodeEventDur')
 ggsave('Figures/SingleElectrodeEventDur/PostEntryDuration_Scatter.pdf', useDingbats = FALSE, width = 16, height = 8)
+
+# plot for each electrode
+patientIDs <- data.frame(UCDMC = c('UCDMC13', 'UCDMC14', 'UCDMC15'),
+                         P = c('P1', 'P2', 'P3'))
+validData$ElectrodeID <- factor(validData$ElectrodeID)
+for (thisElec in 1:nlevels(validData$ElectrodeID)) {
+  elec <- levels(validData$ElectrodeID)[thisElec]
+  elecSplit <- strsplit(elec, '_')
+  session <- ifelse(elecSplit[[1]][2] == 'TeleporterA', 'Session 1', 'Session 2')
+  pTitle <- paste0(patientIDs$P[which(patientIDs$UCDMC == elecSplit[[1]][1])], ' ', session, ' ', elecSplit[[1]][3])
+  
+  p <- validData %>%
+    filter(ElectrodeID == elec) %>%
+    ggplot(aes(x = Condition, 
+               y = MeanDuration, 
+               ymin = MeanDuration - SEM, 
+               ymax = MeanDuration + SEM,
+               group = ElectrodeID)) +
+    geom_point(size = 5) +
+    geom_pointrange() +
+    geom_line() +
+    theme_stata() +
+    theme(plot.background = element_rect(fill = "white"),
+          text = element_text(size = 24),
+          legend.text = element_blank(),
+          legend.title = element_text(size = 18),
+          axis.title.x = element_blank(),
+          axis.title.y = element_text(vjust = 1.5),
+          strip.background = element_rect(colour = "black", size = 0.75),
+          panel.border = element_rect(colour = "black", size = 0.75, fill = NA),
+          panel.grid.major.y = element_line(colour = "dimgray", linetype = "longdash")) +
+    ylab("Mean Duration (ms)") +
+    facet_grid( ~ FrequencyBand) +
+    ggtitle(pTitle)
+  p
+  fileName <- paste0('Figures/SingleElectrodeEventDur/EachElectrodeSeparate/', elec, '_Event_Dur_Scatterplot.pdf')
+  ggsave(fileName, useDingbats = FALSE, width = 16, height = 8)
+}
+
+numElec <- validData %>%
+  select(ElectrodeID, FrequencyBand) %>%
+  unique() %>%
+  group_by(FrequencyBand) %>%
+  summarise(Count = n())
