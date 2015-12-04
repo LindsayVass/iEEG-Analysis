@@ -116,10 +116,19 @@ if visualize == 1
         ftData = squeeze(ftPhase(thisElec, :, :, :));
         
         ntITPC(thisElec, :, :) = squeeze(abs(mean(exp(1i*ntData), 2)));
+        ntITPC = squeeze(ntITPC(thisElec, :, :))';
         ftITPC(thisElec, :, :) = squeeze(abs(mean(exp(1i*ftData), 2)));
+        ftITPC = squeeze(ftITPC(thisElec, :, :))';
+        
+        ntSigP = zeros(size(ntITPC));
+        [~, ~, freqInds] = intersect(analyses(1).GoodFreq, frequencies);
+        [~, ~, timeInds] = intersect(analyses(1).TimeMs, EEG.times);
+        tmpNtSigP = squeeze(analyses(1).SignifP(thisElec, :, :));
+        ntSigP(min(freqInds):max(freqInds),min(timeInds):max(timeInds)) = tmpNtSigP;
+        ntBounds = bwboundaries(ntSigP);
         
         figure;
-        contourf(EEG.times, frequencies, squeeze(ntITPC(thisElec, :, :))', 40, 'linecolor', 'none');
+        contourf(EEG.times, frequencies, ntITPC, 40, 'linecolor', 'none');
         set(gca, 'ytick', round(logspace(log10(frequencies(1)), log10(frequencies(end)), 10) * 100) / 100, ...
             'yscale', 'log', ...
             'clim', [0 1], ...
@@ -129,11 +138,24 @@ if visualize == 1
         hold on
         plot([0 0], ylims, 'w--', 'LineWidth', 2)
         plot([1830 1830], ylims, 'w--', 'LineWidth', 2)
+        for b = 1:length(ntBounds)
+            boundary = ntBounds{b};
+            boundary(:,1) = frequencies(boundary(:,1));
+            boundary(:,2) = EEG.times(boundary(:,2));
+            plot(boundary(:,2), boundary(:,1), 'k', 'LineWidth', 5);
+        end
         hold off
         colorbar
         
+        ftSigP = zeros(size(ftITPC));
+        [~, ~, freqInds] = intersect(analyses(3).GoodFreq, frequencies);
+        [~, ~, timeInds] = intersect(analyses(3).TimeMs, EEG.times);
+        tmpFtSigP = squeeze(analyses(3).SignifP(thisElec, :, :));
+        ftSigP(min(freqInds):max(freqInds),min(timeInds):max(timeInds)) = tmpFtSigP;
+        ftBounds = bwboundaries(ftSigP);
+        
         figure;
-        contourf(EEG.times, frequencies, squeeze(ftITPC(thisElec, :, :))', 40, 'linecolor', 'none');
+        contourf(EEG.times, frequencies, ftITPC, 40, 'linecolor', 'none');
         set(gca, 'ytick', round(logspace(log10(frequencies(1)), log10(frequencies(end)), 10) * 100) / 100, ...
             'yscale', 'log', ...
             'clim', [0 1], ...
@@ -143,6 +165,12 @@ if visualize == 1
         hold on
         plot([0 0], ylims, 'w--', 'LineWidth', 2)
         plot([2830 2830], ylims, 'w--', 'LineWidth', 2)
+        for b = 1:length(ftBounds)
+            boundary = ftBounds{b};
+            boundary(:,1) = frequencies(boundary(:,1));
+            boundary(:,2) = EEG.times(boundary(:,2));
+            plot(boundary(:,2), boundary(:,1), 'k', 'LineWidth', 5);
+        end
         hold off
         colorbar
     end
